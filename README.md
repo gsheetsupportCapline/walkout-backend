@@ -19,15 +19,17 @@ npm install
 
 ## Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory with the following variables:
 
 ```
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/walkout
-JWT_SECRET=your_jwt_secret_key_change_this_in_production
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_secure_jwt_secret_key
 JWT_EXPIRE=7d
 NODE_ENV=development
 ```
+
+**Important:** Never commit the `.env` file to version control. It's already added to `.gitignore`.
 
 ## Run Server
 
