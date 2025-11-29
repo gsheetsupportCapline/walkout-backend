@@ -1,0 +1,916 @@
+{
+  "info": {
+    "_postman_id": "walkout-backend-api",
+    "name": "Walkout Backend API",
+    "description": "Complete API collection for Walkout Backend with authentication and CRUD operations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "User Signup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const responseData = pm.response.json();",
+                  "    pm.environment.set('user_id', responseData.data._id);",
+                  "    pm.collectionVariables.set('new_user_id', responseData.data._id);",
+                  "    console.log('User ID saved:', responseData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser@example.com\",\n  \"username\": \"testuser\",\n  \"password\": \"password123\",\n  \"role\": \"user\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "signup"]
+            },
+            "description": "Register a new user. User will be created with isActive=false and needs admin approval."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const responseData = pm.response.json();",
+                  "    pm.environment.set('auth_token', responseData.token);",
+                  "    pm.environment.set('admin_id', responseData.data._id);",
+                  "    pm.collectionVariables.set('token', responseData.token);",
+                  "    console.log('Token saved:', responseData.token);",
+                  "    console.log('Admin ID:', responseData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailOrUsername\": \"admin@walkout.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "login"]
+            },
+            "description": "Login with admin credentials. Only active users can login. Token will be saved automatically."
+          },
+          "response": []
+        },
+        {
+          "name": "User Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const responseData = pm.response.json();",
+                  "    pm.environment.set('user_token', responseData.token);",
+                  "    pm.environment.set('current_user_id', responseData.data._id);",
+                  "    console.log('User Token saved:', responseData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailOrUsername\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "login"]
+            },
+            "description": "Login as regular user. User must be activated by admin first."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Get All Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const responseData = pm.response.json();",
+                  "    if (responseData.data && responseData.data.length > 0) {",
+                  "        pm.collectionVariables.set('first_user_id', responseData.data[0]._id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users"]
+            },
+            "description": "Get all users. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{new_user_id}}"]
+            },
+            "description": "Get user details by ID. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Activate User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{new_user_id}}", "activate"]
+            },
+            "description": "Activate a user account. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{new_user_id}}", "deactivate"]
+            },
+            "description": "Deactivate a user account. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Change User Role",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}/change-role",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{new_user_id}}", "change-role"]
+            },
+            "description": "Change user role. Only superAdmin can perform this action. Valid roles: superAdmin, admin, user, office"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Extra Permissions",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"extraPermissions\": {\n    \"dashboard\": {\n      \"section\": \"analytics\",\n      \"permission\": \"view\"\n    },\n    \"reports\": {\n      \"section\": \"financial\",\n      \"permission\": \"edit\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}/extra-permissions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{new_user_id}}", "extra-permissions"]
+            },
+            "description": "Update extra permissions for a user. Only superAdmin can perform this action."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated User Name\",\n  \"teamName\": [\n    { \"teamId\": \"{{team_id}}\" }\n  ],\n  \"assignedOffice\": [\n    { \"officeId\": \"{{office_id}}\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{new_user_id}}"]
+            },
+            "description": "Update user details. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{new_user_id}}"]
+            },
+            "description": "Delete a user. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (Self)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"newemail@example.com\",\n  \"password\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile"]
+            },
+            "description": "Update own profile. Any authenticated user can update their name, email, and password."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Regions",
+      "item": [
+        {
+          "name": "Create Region",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const responseData = pm.response.json();",
+                  "    pm.environment.set('region_id', responseData.data._id);",
+                  "    pm.collectionVariables.set('region_id', responseData.data._id);",
+                  "    console.log('Region ID saved:', responseData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"regionName\": \"North Region\",\n  \"regionCode\": \"NR01\",\n  \"isActive\": true,\n  \"visibility\": \"on\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/regions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "regions"]
+            },
+            "description": "Create a new region. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Regions",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/regions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "regions"]
+            },
+            "description": "Get all regions. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Region By ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/regions/{{region_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "regions", "{{region_id}}"]
+            },
+            "description": "Get region by ID. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Region",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"regionName\": \"Updated North Region\",\n  \"regionCode\": \"NR02\",\n  \"visibility\": \"off\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/regions/{{region_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "regions", "{{region_id}}"]
+            },
+            "description": "Update region details. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Region",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/regions/{{region_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "regions", "{{region_id}}"]
+            },
+            "description": "Delete a region. Requires admin or superAdmin role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Offices",
+      "item": [
+        {
+          "name": "Create Office",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const responseData = pm.response.json();",
+                  "    pm.environment.set('office_id', responseData.data._id);",
+                  "    pm.collectionVariables.set('office_id', responseData.data._id);",
+                  "    console.log('Office ID saved:', responseData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officeName\": \"Delhi Office\",\n  \"officeCode\": \"DLH01\",\n  \"regionId\": \"{{region_id}}\",\n  \"isActive\": true,\n  \"visibility\": \"on\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/offices",
+              "host": ["{{base_url}}"],
+              "path": ["api", "offices"]
+            },
+            "description": "Create a new office. Requires admin or superAdmin role. Must have a valid region_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Offices",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/offices",
+              "host": ["{{base_url}}"],
+              "path": ["api", "offices"]
+            },
+            "description": "Get all offices with region details populated. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Office By ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/offices/{{office_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "offices", "{{office_id}}"]
+            },
+            "description": "Get office by ID with region details. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Office",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officeName\": \"Updated Delhi Office\",\n  \"officeCode\": \"DLH02\",\n  \"isActive\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/offices/{{office_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "offices", "{{office_id}}"]
+            },
+            "description": "Update office details. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Office",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/offices/{{office_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "offices", "{{office_id}}"]
+            },
+            "description": "Delete an office. Requires admin or superAdmin role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "item": [
+        {
+          "name": "Create Team",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const responseData = pm.response.json();",
+                  "    pm.environment.set('team_id', responseData.data._id);",
+                  "    pm.collectionVariables.set('team_id', responseData.data._id);",
+                  "    console.log('Team ID saved:', responseData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamName\": \"Development Team\",\n  \"teamPermissions\": {\n    \"dashboard\": [\"view\", \"edit\"],\n    \"reports\": [\"view\"],\n    \"users\": [\"view\"]\n  },\n  \"isActive\": true,\n  \"visibility\": \"on\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/teams",
+              "host": ["{{base_url}}"],
+              "path": ["api", "teams"]
+            },
+            "description": "Create a new team with permissions. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Teams",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/teams",
+              "host": ["{{base_url}}"],
+              "path": ["api", "teams"]
+            },
+            "description": "Get all teams. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Team By ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/teams/{{team_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "teams", "{{team_id}}"]
+            },
+            "description": "Get team by ID. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Team",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamName\": \"Updated Development Team\",\n  \"teamPermissions\": {\n    \"dashboard\": [\"view\", \"edit\"],\n    \"reports\": [\"view\", \"edit\"],\n    \"users\": [\"view\", \"edit\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/teams/{{team_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "teams", "{{team_id}}"]
+            },
+            "description": "Update team details and permissions. Requires admin or superAdmin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Team",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/teams/{{team_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "teams", "{{team_id}}"]
+            },
+            "description": "Delete a team. Requires admin or superAdmin role."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "new_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "region_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "office_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "team_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

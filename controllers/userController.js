@@ -335,6 +335,46 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const updateProfile = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (name) user.name = name;
+    if (email) {
+      const emailExists = await User.findOne({
+        email,
+        _id: { $ne: req.user._id },
+      });
+      if (emailExists) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+      user.email = email;
+    }
+    if (password) user.password = password;
+
+    await user.save();
+
+    const updatedUser = await User.findById(user._id)
+      .populate("teamName.teamId", "teamName teamPermissions")
+      .populate("assignedOffice.officeId", "officeName regionId")
+      .populate("approvedBy", "name email");
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   signup,
   login,
@@ -345,5 +385,6 @@ module.exports = {
   changeUserRole,
   updateExtraPermissions,
   updateUser,
+  updateProfile,
   deleteUser,
 };

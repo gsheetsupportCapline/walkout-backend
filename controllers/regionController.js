@@ -2,20 +2,23 @@ const Region = require("../models/Region");
 
 const createRegion = async (req, res) => {
   try {
-    const { regionName, isActive, visibility } = req.body;
+    const { regionName, regionCode, isActive, visibility } = req.body;
 
-    if (!regionName) {
-      return res.status(400).json({ message: "Please provide region name" });
+    if (!regionName || !regionCode) {
+      return res.status(400).json({ message: "Please provide region name and code" });
     }
 
-    const regionExists = await Region.findOne({ regionName });
+    const regionExists = await Region.findOne({
+      $or: [{ regionName }, { regionCode }],
+    });
 
     if (regionExists) {
-      return res.status(400).json({ message: "Region already exists" });
+      return res.status(400).json({ message: "Region with this name or code already exists" });
     }
 
     const region = await Region.create({
       regionName,
+      regionCode,
       isActive,
       visibility,
     });

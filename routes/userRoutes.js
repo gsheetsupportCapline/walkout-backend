@@ -11,6 +11,7 @@ const {
   changeUserRole,
   updateExtraPermissions,
   updateUser,
+  updateProfile,
   deleteUser,
 } = require("../controllers/userController");
 
@@ -18,6 +19,8 @@ router.post("/signup", signup);
 router.post("/login", login);
 
 router.route("/").get(protect, restrictTo("superAdmin", "admin"), getAllUsers);
+
+router.route("/profile").put(protect, updateProfile);
 
 router
   .route("/:id")

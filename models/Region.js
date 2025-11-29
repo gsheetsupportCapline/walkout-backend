@@ -8,6 +8,13 @@ const regionSchema = new mongoose.Schema(
       trim: true,
       unique: true,
     },
+    regionCode: {
+      type: String,
+      required: [true, "Please provide region code"],
+      trim: true,
+      unique: true,
+      uppercase: true,
+    },
     isActive: {
       type: Boolean,
       default: true,

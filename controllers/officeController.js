@@ -2,16 +2,23 @@ const Office = require("../models/Office");
 
 const createOffice = async (req, res) => {
   try {
-    const { officeName, regionId, isActive, visibility } = req.body;
+    const { officeName, officeCode, regionId, isActive, visibility } = req.body;
 
-    if (!officeName || !regionId) {
+    if (!officeName || !officeCode || !regionId) {
       return res
         .status(400)
-        .json({ message: "Please provide office name and region" });
+        .json({ message: "Please provide office name, office code and region" });
+    }
+
+    const officeExists = await Office.findOne({ officeCode });
+
+    if (officeExists) {
+      return res.status(400).json({ message: "Office with this code already exists" });
     }
 
     const office = await Office.create({
       officeName,
+      officeCode,
       regionId,
       isActive,
       visibility,
@@ -19,7 +26,7 @@ const createOffice = async (req, res) => {
 
     const populatedOffice = await Office.findById(office._id).populate(
       "regionId",
-      "regionName"
+      "regionName regionCode"
     );
 
     res.status(201).json({
@@ -33,7 +40,7 @@ const createOffice = async (req, res) => {
 
 const getAllOffices = async (req, res) => {
   try {
-    const offices = await Office.find({}).populate("regionId", "regionName");
+    const offices = await Office.find({}).populate("regionId", "regionName regionCode");
 
     res.status(200).json({
       success: true,
@@ -49,7 +56,7 @@ const getOfficeById = async (req, res) => {
   try {
     const office = await Office.findById(req.params.id).populate(
       "regionId",
-      "regionName"
+      "regionName regionCode"
     );
 
     if (!office) {
@@ -80,7 +87,7 @@ const updateOffice = async (req, res) => {
         new: true,
         runValidators: true,
       }
-    ).populate("regionId", "regionName");
+    ).populate("regionId", "regionName regionCode");
 
     res.status(200).json({
       success: true,

@@ -7,6 +7,13 @@ const officeSchema = new mongoose.Schema(
       required: [true, "Please provide office name"],
       trim: true,
     },
+    officeCode: {
+      type: String,
+      required: [true, "Please provide office code"],
+      trim: true,
+      unique: true,
+      uppercase: true,
+    },
     regionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Region",
