@@ -7,13 +7,17 @@ const createOffice = async (req, res) => {
     if (!officeName || !officeCode || !regionId) {
       return res
         .status(400)
-        .json({ message: "Please provide office name, office code and region" });
+        .json({
+          message: "Please provide office name, office code and region",
+        });
     }
 
     const officeExists = await Office.findOne({ officeCode });
 
     if (officeExists) {
-      return res.status(400).json({ message: "Office with this code already exists" });
+      return res
+        .status(400)
+        .json({ message: "Office with this code already exists" });
     }
 
     const office = await Office.create({
@@ -40,7 +44,10 @@ const createOffice = async (req, res) => {
 
 const getAllOffices = async (req, res) => {
   try {
-    const offices = await Office.find({}).populate("regionId", "regionName regionCode");
+    const offices = await Office.find({}).populate(
+      "regionId",
+      "regionName regionCode"
+    );
 
     res.status(200).json({
       success: true,

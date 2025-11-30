@@ -57,11 +57,23 @@
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "    const responseData = pm.response.json();",
-                  "    pm.environment.set('auth_token', responseData.token);",
+                  "    const token = responseData.token;",
+                  "    ",
+                  "    // Save in both environment and collection variables",
+                  "    pm.environment.set('auth_token', token);",
+                  "    pm.collectionVariables.set('auth_token', token);",
                   "    pm.environment.set('admin_id', responseData.data._id);",
-                  "    pm.collectionVariables.set('token', responseData.token);",
-                  "    console.log('Token saved:', responseData.token);",
+                  "    pm.collectionVariables.set('admin_id', responseData.data._id);",
+                  "    ",
+                  "    console.log('✅ Token saved successfully');",
+                  "    console.log('Token:', token);",
                   "    console.log('Admin ID:', responseData.data._id);",
+                  "    ",
+                  "    pm.test('Token saved', function() {",
+                  "        pm.expect(token).to.not.be.undefined;",
+                  "    });",
+                  "} else {",
+                  "    console.error('❌ Login failed');",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -98,9 +110,18 @@
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "    const responseData = pm.response.json();",
-                  "    pm.environment.set('user_token', responseData.token);",
+                  "    const token = responseData.token;",
+                  "    ",
+                  "    // Save user token separately",
+                  "    pm.environment.set('user_token', token);",
+                  "    pm.collectionVariables.set('user_token', token);",
                   "    pm.environment.set('current_user_id', responseData.data._id);",
-                  "    console.log('User Token saved:', responseData.token);",
+                  "    pm.collectionVariables.set('current_user_id', responseData.data._id);",
+                  "    ",
+                  "    console.log('✅ User token saved successfully');",
+                  "    console.log('Token:', token);",
+                  "} else {",
+                  "    console.error('❌ Login failed');",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -888,7 +909,22 @@
       "type": "string"
     },
     {
-      "key": "token",
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_user_id",
       "value": "",
       "type": "string"
     },
