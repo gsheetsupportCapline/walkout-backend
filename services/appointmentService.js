@@ -80,7 +80,7 @@ const fetchAppointmentData = async (officeName, startDate, endDate) => {
 
     const response = await axios.get(apiUrl, {
       params: params,
-      timeout: 60000, // 60 seconds timeout for this API
+      timeout: 120000, // 120 seconds timeout for this API (increased from 60)
     });
 
     // API returns: { message: "", data: [{c1, c2, c3, c4, c5, c6}], status: "OK" }
@@ -88,15 +88,21 @@ const fetchAppointmentData = async (officeName, startDate, endDate) => {
     const appointmentData = response.data.data || [];
 
     console.log(
-      `Received ${appointmentData.length} appointments for office: ${officeName}`
+      `✓ Received ${appointmentData.length} appointments for office: ${officeName}`
     );
 
     return appointmentData;
   } catch (error) {
-    console.error(
-      `Error fetching data for office ${officeName}:`,
-      error.message
-    );
+    if (error.code === "ECONNABORTED") {
+      console.error(
+        `✗ Timeout fetching data for office ${officeName} (exceeded 120 seconds)`
+      );
+    } else {
+      console.error(
+        `✗ Error fetching data for office ${officeName}:`,
+        error.message
+      );
+    }
     throw error;
   }
 };
@@ -121,13 +127,21 @@ const transformData = (apiData, officeName) => {
 };
 
 /**
- * Sync appointments for a single office
+ * Sync appointments for a single office with retry logic
  * @param {Object} office - Office document
  * @param {string} startDate - Start date for fetching
  * @param {string} endDate - End date for fetching
+ * @param {number} retryCount - Current retry attempt (default 0)
  * @returns {Promise<Object>} - Result with success status and counts
  */
-const syncOfficeAppointments = async (office, startDate, endDate) => {
+const syncOfficeAppointments = async (
+  office,
+  startDate,
+  endDate,
+  retryCount = 0
+) => {
+  const maxRetries = 2; // Will try up to 3 times (initial + 2 retries)
+
   try {
     const officeName = office.officeName;
 
@@ -198,44 +212,106 @@ const syncOfficeAppointments = async (office, startDate, endDate) => {
     }
 
     // Insert or update new appointments
-    let newCount = 0;
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
     for (const data of transformedData) {
       try {
-        await PatientAppointment.findOneAndUpdate(
-          {
-            "patient-id": data["patient-id"],
-            "office-name": data["office-name"],
-            dos: data.dos,
-          },
-          data,
-          { upsert: true, new: true }
-        );
-        newCount++;
+        // First, check if the appointment already exists
+        const existingAppointment = await PatientAppointment.findOne({
+          "patient-id": data["patient-id"],
+          "office-name": data["office-name"],
+          dos: data.dos,
+        });
+
+        if (existingAppointment) {
+          // Check if any field (except updated-on) has actually changed
+          const hasChanges =
+            existingAppointment["patient-name"] !== data["patient-name"] ||
+            existingAppointment["chair-name"] !== data["chair-name"] ||
+            existingAppointment["insurance-name"] !== data["insurance-name"] ||
+            existingAppointment["insurance-type"] !== data["insurance-type"];
+
+          if (hasChanges) {
+            // Only update if there are actual changes, and update the updated-on timestamp
+            await PatientAppointment.updateOne(
+              {
+                "patient-id": data["patient-id"],
+                "office-name": data["office-name"],
+                dos: data.dos,
+              },
+              {
+                $set: {
+                  "patient-name": data["patient-name"],
+                  "chair-name": data["chair-name"],
+                  "insurance-name": data["insurance-name"],
+                  "insurance-type": data["insurance-type"],
+                  "updated-on": getCSTDateTime(),
+                },
+              }
+            );
+            updatedCount++;
+          } else {
+            // No changes, skip update and keep old updated-on timestamp
+            skippedCount++;
+          }
+        } else {
+          // New appointment, insert it
+          await PatientAppointment.create(data);
+          insertedCount++;
+        }
       } catch (error) {
         // Skip duplicate entries
         if (error.code !== 11000) {
-          console.error(`Error inserting appointment:`, error.message);
+          console.error(`Error processing appointment:`, error.message);
         }
       }
     }
 
     console.log(
-      `Successfully synced ${newCount} appointments for office: ${officeName}`
+      `✓ Office: ${officeName} | New: ${insertedCount} | Updated: ${updatedCount} | Skipped: ${skippedCount} | Archived: ${archivedCount}`
     );
 
     return {
       success: true,
       officeName: officeName,
-      newCount: newCount,
+      newCount: insertedCount,
+      updatedCount: updatedCount,
       archivedCount: archivedCount,
     };
   } catch (error) {
-    console.error(`Error syncing office ${office.officeName}:`, error.message);
+    // Retry logic
+    if (retryCount < maxRetries) {
+      console.warn(
+        `⚠ Retry ${retryCount + 1}/${maxRetries} for office ${
+          office.officeName
+        } due to: ${error.message}`
+      );
+
+      // Wait 5 seconds before retrying
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
+      // Recursive retry
+      return await syncOfficeAppointments(
+        office,
+        startDate,
+        endDate,
+        retryCount + 1
+      );
+    }
+
+    console.error(
+      `✗ Failed to sync office ${office.officeName} after ${
+        maxRetries + 1
+      } attempts: ${error.message}`
+    );
     return {
       success: false,
       officeName: office.officeName,
       reason: error.message,
       newCount: 0,
+      updatedCount: 0,
       archivedCount: 0,
     };
   }
@@ -277,12 +353,18 @@ const syncAllAppointments = async (options = {}) => {
 
     console.log(`Processing ${activeOffices.length} active offices`);
 
-    // Process each office
-    const results = await Promise.all(
-      activeOffices.map((office) =>
-        syncOfficeAppointments(office, startDate, endDate)
-      )
-    );
+    // Process each office sequentially to avoid overwhelming the API
+    const results = [];
+    for (const office of activeOffices) {
+      console.log(`\n--- Processing office: ${office.officeName} ---`);
+      const result = await syncOfficeAppointments(office, startDate, endDate);
+      results.push(result);
+
+      // Add a small delay between offices to be respectful to the API
+      if (results.length < activeOffices.length) {
+        await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
+      }
+    }
 
     // Separate successful and failed syncs
     const successfulOffices = results

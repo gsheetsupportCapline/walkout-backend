@@ -6,22 +6,28 @@ const {
   getSyncHistory,
   getAppointmentStats,
   getOfficeAppointments,
+  getAppointmentsList,
 } = require("../controllers/appointmentController");
 
-// All routes require admin or superAdmin access
-router.use(protect);
-router.use(restrictTo("admin", "superAdmin"));
+// Manual sync, history, and stats require admin or superAdmin access
+router.post("/sync", protect, restrictTo("admin", "superAdmin"), manualSync);
+router.get(
+  "/sync-history",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  getSyncHistory
+);
+router.get(
+  "/stats",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  getAppointmentStats
+);
 
-// Manual sync trigger
-router.post("/sync", manualSync);
+// Get office appointments - accessible to all authenticated users
+router.get("/office/:officeName", protect, getOfficeAppointments);
 
-// Get sync history
-router.get("/sync-history", getSyncHistory);
-
-// Get appointment statistics
-router.get("/stats", getAppointmentStats);
-
-// Get appointments for specific office
-router.get("/office/:officeName", getOfficeAppointments);
+// Get appointments with filters (for frontend table) - accessible to all authenticated users
+router.get("/list", protect, getAppointmentsList);
 
 module.exports = router;
