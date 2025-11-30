@@ -900,6 +900,157 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Manual Sync",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ Sync completed successfully');",
+                  "    const responseData = pm.response.json();",
+                  "    console.log('Successful offices:', responseData.data.successfulOffices.count);",
+                  "    console.log('Failed offices:', responseData.data.failedOffices.count);",
+                  "} else {",
+                  "    console.log('❌ Sync failed');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/sync",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "sync"]
+            },
+            "description": "Manually trigger appointment sync for all active offices. Admin/SuperAdmin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sync History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/sync-history?limit=30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "sync-history"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "30"
+                },
+                {
+                  "key": "date",
+                  "value": "2024-01-15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get sync history for last 30 days or specific date. Admin/SuperAdmin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Appointment Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "stats"]
+            },
+            "description": "Get appointment statistics including total count, breakdown by office, and last sync details. Admin/SuperAdmin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Office Appointments",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/office/:officeName?limit=100&skip=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "office", ":officeName"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "officeName",
+                  "value": "Delhi Office"
+                }
+              ]
+            },
+            "description": "Get appointments for a specific office with pagination. Admin/SuperAdmin only."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

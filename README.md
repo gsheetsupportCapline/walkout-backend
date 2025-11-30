@@ -2200,3 +2200,207 @@ app.use(cors(corsOptions));
 **Audit Trail**: Know exactly who approved each user and when
 
 ---
+
+## Appointment Sync System
+
+### Overview
+
+Automatic patient appointment synchronization system that fetches data from Capline Rule Engine every 3 hours and maintains appointment records.
+
+### How It Works
+
+**Automatic Sync**: Runs every 3 hours at 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00 (CST timezone)
+
+**Date Range**: Automatically fetches appointments from first day of last month to today
+
+**Process Flow**:
+
+1. Fetch appointment data for each active office from external API
+2. Transform and save new/updated appointments to `pt-appt` collection
+3. Move removed appointments to `pt-appt-archive` collection
+4. Log execution details in `sync-logs` collection
+
+### Key Features
+
+- ✅ **Smart Processing**: Only processes offices marked as `isActive: true`
+- ✅ **No Data Handling**: Skips office if API returns empty data (prevents accidental data loss)
+- ✅ **Duplicate Prevention**: Unique index on patient-id + office-name + date of service
+- ✅ **Auto Archiving**: Appointments removed from API are archived with timestamp
+- ✅ **Complete Logging**: Tracks every sync with success/failure counts per office
+- ✅ **Manual Trigger**: Admin can manually trigger sync via API endpoint
+- ✅ **CST Timezone**: All timestamps use America/Chicago timezone
+
+### API Endpoints
+
+All appointment endpoints require admin or superAdmin authentication.
+
+#### 1. Manual Sync Trigger
+
+```
+POST /api/appointments/sync
+Authorization: Bearer <token>
+```
+
+Manually trigger appointment sync for all active offices.
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "message": "Appointment sync completed successfully",
+  "data": {
+    "dateRange": { "startDate": "2024-11-01", "endDate": "2024-12-01" },
+    "totalOffices": 15,
+    "successfulOffices": { "count": 13, "offices": [...] },
+    "failedOffices": { "count": 2, "offices": [...] }
+  }
+}
+```
+
+#### 2. Get Sync History
+
+```
+GET /api/appointments/sync-history?limit=30&date=2024-12-01
+Authorization: Bearer <token>
+```
+
+View historical sync execution logs.
+
+**Query Parameters**:
+
+- `limit` (optional): Number of days to retrieve (default: 30)
+- `date` (optional): Specific date in YYYY-MM-DD format
+
+#### 3. Get Appointment Statistics
+
+```
+GET /api/appointments/stats
+Authorization: Bearer <token>
+```
+
+View current appointment statistics and counts.
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalAppointments": 1250,
+    "appointmentsByOffice": [...],
+    "lastSync": "2024-12-01T18:00:00.000Z",
+    "lastSyncDetails": {...}
+  }
+}
+```
+
+#### 4. Get Office Appointments
+
+```
+GET /api/appointments/office/:officeName?limit=100&skip=0
+Authorization: Bearer <token>
+```
+
+Retrieve appointments for a specific office with pagination.
+
+### Data Models
+
+#### PatientAppointment (pt-appt)
+
+Current active appointments.
+
+**Fields**:
+
+- `patient-id`: Patient identifier
+- `patient-name`: Full name
+- `dos`: Date of service
+- `chair-name`: Appointment type/chair
+- `insurance-name`: Insurance company name
+- `insurance-type`: Insurance plan type
+- `office-name`: Office where appointment is scheduled
+- `updated-on`: Last sync timestamp (CST)
+
+#### PatientAppointmentArchive (pt-appt-archive)
+
+Archived appointments that were removed from external system.
+
+**Fields**: Same as PatientAppointment plus:
+
+- `moved-on`: Archive timestamp (CST)
+
+#### SyncLog (sync-logs)
+
+Tracks all sync executions by date.
+
+**Structure**:
+
+```javascript
+{
+  date: "2024-12-01",  // CST date
+  executions: [{
+    executedAt: Date,
+    successfulOffices: { count: Number, offices: [String] },
+    failedOffices: { count: Number, offices: [String] },
+    totalProcessed: Number,
+    manualTrigger: Boolean,
+    triggeredBy: ObjectId
+  }],
+  totalExecutions: Number,
+  lastSyncAt: Date
+}
+```
+
+### Configuration
+
+**Environment Variable** (optional):
+
+```env
+APPOINTMENT_API_PASSWORD=134568
+```
+
+**Default**: If not provided, uses default password 134568
+
+**External API**: Pre-configured to use Capline Rule Engine at `https://www.caplineruleengine.com/googleESReport`
+
+### Important Behaviors
+
+1. **Active Offices Only**: Only processes offices with `isActive: true` in database
+2. **Empty Data Handling**: If API returns no data for an office:
+   - Office is logged as "failed" with reason "No data received"
+   - Existing appointments remain unchanged
+   - No archiving occurs
+   - This prevents data loss due to API issues
+3. **Duplicate Prevention**: System automatically handles duplicates using unique index
+4. **Timezone Consistency**: All dates and times use CST (America/Chicago) timezone
+
+### Monitoring
+
+**Check Server Logs**: Cron initialization message on server start:
+
+```
+✓ Appointment sync cron job initialized
+✓ Schedule: Every 3 hours (0 */3 * * *)
+✓ Timezone: America/Chicago (CST)
+```
+
+**Sync Execution Logs**: Console shows detailed progress during each sync:
+
+```
+========================================================
+Cron job started at: 2024-12-01T18:00:00.000Z
+Processing 15 active offices
+Received 150 appointments for office: Jasper
+Successfully synced 150 appointments for office: Jasper
+Sync completed - Success: 13, Failed: 2
+========================================================
+```
+
+### Documentation
+
+For complete documentation, see:
+
+- **APPOINTMENT_SYNC_GUIDE.md** - Detailed technical documentation
+- **APPOINTMENT_SETUP.md** - Quick setup and testing guide
+
+---
