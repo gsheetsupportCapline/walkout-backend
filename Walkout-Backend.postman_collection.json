@@ -1051,6 +1051,167 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Provider Schedule",
+      "item": [
+        {
+          "name": "Manual Sync Provider Schedule",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/provider-schedule/sync",
+              "host": ["{{base_url}}"],
+              "path": ["api", "provider-schedule", "sync"]
+            },
+            "description": "Manually trigger provider schedule sync from Google Sheet. Admin/SuperAdmin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Provider Schedule Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/provider-schedule/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "provider-schedule", "stats"]
+            },
+            "description": "Get provider schedule statistics including total records, breakdown by office, and by provider type. Admin/SuperAdmin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Provider Schedule List",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/provider-schedule/list?officeName=ABC Dental&startDate=2025-12-01&endDate=2025-12-31&limit=100&skip=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "provider-schedule", "list"],
+              "query": [
+                {
+                  "key": "officeName",
+                  "value": "ABC Dental",
+                  "description": "Office name (optional)"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-12-01",
+                  "description": "Start date YYYY-MM-DD (optional)"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-12-31",
+                  "description": "End date YYYY-MM-DD (optional)"
+                },
+                {
+                  "key": "providerCode",
+                  "value": "",
+                  "description": "Provider code filter (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "providerType",
+                  "value": "",
+                  "description": "Provider type filter (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "100",
+                  "description": "Records per page"
+                },
+                {
+                  "key": "skip",
+                  "value": "0",
+                  "description": "Skip records for pagination"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "dos",
+                  "description": "Sort field (default: dos)",
+                  "disabled": true
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc",
+                  "description": "Sort order: asc or desc",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get provider schedule list with optional filters. All authenticated users."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Provider Schedule by Office and DOS",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officeName\": \"ABC Dental\",\n  \"dos\": \"2025-12-15\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/provider-schedule/get-by-office-dos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "provider-schedule", "get-by-office-dos"]
+            },
+            "description": "Get all provider schedules for a specific office and date of service. All authenticated users."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

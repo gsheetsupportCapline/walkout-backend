@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const connectDB = require("./config/database");
 const { initAppointmentCron } = require("./cron/appointmentCron");
+const { initProviderScheduleCron } = require("./cron/providerScheduleCron");
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use("/api/regions", require("./routes/regionRoutes"));
 app.use("/api/offices", require("./routes/officeRoutes"));
 app.use("/api/teams", require("./routes/teamRoutes"));
 app.use("/api/appointments", require("./routes/appointmentRoutes"));
+app.use("/api/provider-schedule", require("./routes/providerScheduleRoutes"));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -36,4 +38,7 @@ app.listen(PORT, () => {
 
   // Initialize appointment sync cron job
   initAppointmentCron();
+
+  // Initialize provider schedule sync cron job
+  initProviderScheduleCron();
 });
