@@ -1212,6 +1212,1088 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Radio Buttons",
+      "item": [
+        {
+          "name": "Button Sets",
+          "item": [
+            {
+              "name": "Create Button Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Treatment Type\",\n  \"description\": \"Types of dental treatments\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-sets",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "button-sets"]
+                },
+                "description": "Create a new button set. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Button Sets",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-sets?isActive=true&limit=100&skip=0",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "button-sets"],
+                  "query": [
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "description": "Filter by active status"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Records per page"
+                    },
+                    {
+                      "key": "skip",
+                      "value": "0",
+                      "description": "Skip records for pagination"
+                    }
+                  ]
+                },
+                "description": "Get all button sets. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Button Set by ID",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-sets/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "button-sets", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{button_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Get button set by ID. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Button Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Treatment Type Updated\",\n  \"description\": \"Updated description\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-sets/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "button-sets", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{button_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Update button set. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Button Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-sets/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "button-sets", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{button_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Delete button set. Admin/SuperAdmin only. Cannot delete if buttons exist."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Radio Buttons",
+          "item": [
+            {
+              "name": "Create Radio Button",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"buttonSetId\": \"{{button_set_id}}\",\n  \"name\": \"Root Canal\",\n  \"visibility\": true,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons"]
+                },
+                "description": "Create a new radio button. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Radio Buttons",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons?buttonSetId={{button_set_id}}&isActive=true&visibility=true&limit=100&skip=0",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons"],
+                  "query": [
+                    {
+                      "key": "buttonSetId",
+                      "value": "{{button_set_id}}",
+                      "description": "Filter by button set ID (optional)"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "description": "Filter by active status (optional)"
+                    },
+                    {
+                      "key": "visibility",
+                      "value": "true",
+                      "description": "Filter by visibility (optional)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Records per page"
+                    },
+                    {
+                      "key": "skip",
+                      "value": "0",
+                      "description": "Skip records for pagination"
+                    }
+                  ]
+                },
+                "description": "Get all radio buttons with optional filters. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Radio Buttons by Button Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-set/:buttonSetId?isActive=true&visibility=true",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "radio-buttons",
+                    "button-set",
+                    ":buttonSetId"
+                  ],
+                  "query": [
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "description": "Filter by active status (optional)"
+                    },
+                    {
+                      "key": "visibility",
+                      "value": "true",
+                      "description": "Filter by visibility (optional)"
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "buttonSetId",
+                      "value": "{{button_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Get all radio buttons for a specific button set. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Radio Button by ID",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{radio_button_id}}"
+                    }
+                  ]
+                },
+                "description": "Get radio button by ID. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Radio Button",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Root Canal Treatment\",\n  \"visibility\": true,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{radio_button_id}}"
+                    }
+                  ]
+                },
+                "description": "Update radio button. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Radio Button",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{radio_button_id}}"
+                    }
+                  ]
+                },
+                "description": "Delete radio button. Admin/SuperAdmin only."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Bulk Operations",
+          "item": [
+            {
+              "name": "Bulk Create Radio Buttons",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"buttonSetId\": \"{{button_set_id}}\",\n  \"buttons\": [\n    {\n      \"name\": \"Cleaning\",\n      \"visibility\": true,\n      \"isActive\": true\n    },\n    {\n      \"name\": \"Filling\",\n      \"visibility\": true,\n      \"isActive\": true\n    },\n    {\n      \"name\": \"Extraction\",\n      \"visibility\": true,\n      \"isActive\": true\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/bulk",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "bulk"]
+                },
+                "description": "Create multiple radio buttons at once. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Update Radio Buttons",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"buttons\": [\n    {\n      \"id\": \"button_id_1\",\n      \"name\": \"Deep Cleaning\",\n      \"visibility\": true,\n      \"isActive\": true\n    },\n    {\n      \"id\": \"button_id_2\",\n      \"name\": \"Tooth Filling\",\n      \"visibility\": false,\n      \"isActive\": true\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/bulk",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "bulk"]
+                },
+                "description": "Update multiple radio buttons at once. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Delete Radio Buttons",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\n    \"button_id_1\",\n    \"button_id_2\",\n    \"button_id_3\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/bulk",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "bulk"]
+                },
+                "description": "Delete multiple radio buttons at once. Admin/SuperAdmin only."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dropdowns",
+      "item": [
+        {
+          "name": "Dropdown Sets",
+          "item": [
+            {
+              "name": "Create Dropdown Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Department Dropdown\",\n  \"description\": \"Hospital departments\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "dropdown-sets"]
+                },
+                "description": "Create a new dropdown set. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Dropdown Sets",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets?isActive=true&limit=100&skip=0",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "dropdown-sets"],
+                  "query": [
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "description": "Filter by active status"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Records per page"
+                    },
+                    {
+                      "key": "skip",
+                      "value": "0",
+                      "description": "Skip records for pagination"
+                    }
+                  ]
+                },
+                "description": "Get all dropdown sets. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Dropdown Set by ID",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "dropdown-sets", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{dropdown_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Get dropdown set by ID with populated options. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Dropdown Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Department Dropdown Updated\",\n  \"description\": \"Updated description\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "dropdown-sets", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{dropdown_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Update dropdown set. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Dropdown Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "dropdown-sets", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{dropdown_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Delete dropdown set. Admin/SuperAdmin only. Options remain intact."
+              },
+              "response": []
+            },
+            {
+              "name": "Add Options to Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"optionIds\": [\n    \"{{dropdown_option_id}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets/:id/options",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "dropdown-sets",
+                    ":id",
+                    "options"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{dropdown_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Add options to dropdown set. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Remove Options from Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"optionIds\": [\n    \"{{dropdown_option_id}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets/:id/options",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "dropdown-sets",
+                    ":id",
+                    "options"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{dropdown_set_id}}"
+                    }
+                  ]
+                },
+                "description": "Remove options from dropdown set. Admin/SuperAdmin only. Does not delete options."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Dropdown Options",
+          "item": [
+            {
+              "name": "Create Dropdown Option",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Primary Care\",\n  \"visibility\": true,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns"]
+                },
+                "description": "Create a new dropdown option. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Dropdown Options",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns?isActive=true&visibility=true&limit=100&skip=0",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns"],
+                  "query": [
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "description": "Filter by active status (optional)"
+                    },
+                    {
+                      "key": "visibility",
+                      "value": "true",
+                      "description": "Filter by visibility (optional)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "Records per page"
+                    },
+                    {
+                      "key": "skip",
+                      "value": "0",
+                      "description": "Skip records for pagination"
+                    }
+                  ]
+                },
+                "description": "Get all dropdown options with optional filters. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Dropdown Option by ID",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{dropdown_option_id}}"
+                    }
+                  ]
+                },
+                "description": "Get dropdown option by ID. All authenticated users."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Dropdown Option",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Primary Care Department\",\n  \"visibility\": true,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{dropdown_option_id}}"
+                    }
+                  ]
+                },
+                "description": "Update dropdown option. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Dropdown Option",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{dropdown_option_id}}"
+                    }
+                  ]
+                },
+                "description": "Delete dropdown option. Admin/SuperAdmin only. Automatically removes from all dropdown sets."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Bulk Operations",
+          "item": [
+            {
+              "name": "Bulk Create Dropdown Options",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"options\": [\n    {\n      \"name\": \"Cardiology\",\n      \"visibility\": true,\n      \"isActive\": true\n    },\n    {\n      \"name\": \"Neurology\",\n      \"visibility\": true,\n      \"isActive\": true\n    },\n    {\n      \"name\": \"Orthopedics\",\n      \"visibility\": true,\n      \"isActive\": true\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/bulk",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "bulk"]
+                },
+                "description": "Create multiple dropdown options at once. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Update Dropdown Options",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"updates\": [\n    {\n      \"id\": \"option_id_1\",\n      \"name\": \"Cardiology Department\",\n      \"visibility\": true,\n      \"isActive\": true\n    },\n    {\n      \"id\": \"option_id_2\",\n      \"name\": \"Neurology Department\",\n      \"visibility\": false,\n      \"isActive\": true\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/bulk",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "bulk"]
+                },
+                "description": "Update multiple dropdown options at once. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Delete Dropdown Options",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\n    \"option_id_1\",\n    \"option_id_2\",\n    \"option_id_3\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/bulk",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "bulk"]
+                },
+                "description": "Delete multiple dropdown options at once. Admin/SuperAdmin only. Automatically removes from all dropdown sets."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -1257,6 +2339,26 @@
     },
     {
       "key": "team_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "button_set_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "radio_button_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dropdown_set_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dropdown_option_id",
       "value": "",
       "type": "string"
     }
