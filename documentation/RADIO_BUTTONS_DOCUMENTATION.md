@@ -1,159 +1,407 @@
-# Radio Buttons Management System - Complete Documentation
+# Radio Button Sets - Complete Documentation
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Architecture](#architecture)
+3. [Database Schema](#database-schema)
+4. [API Endpoints](#api-endpoints)
+5. [Use Cases and Examples](#use-cases-and-examples)
+6. [Frontend Integration](#frontend-integration)
+7. [Best Practices](#best-practices)
+
+---
 
 ## Overview
 
-The Radio Buttons Management System provides a flexible way to manage dynamic form radio buttons that can be reused across multiple contexts in the application. The system uses a many-to-many relationship architecture where:
+The Radio Button Sets system provides a flexible infrastructure for managing radio button groups across the application. It implements an **embedded document architecture** where radio buttons are stored as subdocuments within their parent button sets.
 
-1. **Radio Buttons** - Independent, reusable button entities
-2. **Button Sets** - Logical groups that can contain multiple buttons
-3. **Association** - Buttons can be added to or removed from multiple button sets
+### Key Features
 
-**Key Features:**
+- **Embedded Radio Buttons**: Buttons are stored as subdocuments within button sets (no separate collection)
+- **Set-Based Organization**: All buttons belong to a specific button set
+- **Role-Based Access Control**: Admin and SuperAdmin for mutations, all authenticated users for queries
+- **Bulk Operations**: Efficient batch creation, updates, and deletions within a set
+- **Visibility Control**: Buttons can be hidden without deletion
+- **Name Uniqueness**: Button names must be unique within each set (can be reused across different sets)
 
-- Independent button management (create once, use anywhere)
-- Flexible button grouping via button sets
-- Many-to-many relationships (one button can be in multiple sets)
-- Role-based access control
-- Bulk operations for efficiency
-- Audit trail tracking
+### Design Philosophy
+
+The system uses **embedded documents** for simplicity and atomic operations:
+
+- Buttons are stored directly in the button set document
+- No separate collection for radio buttons
+- All CRUD operations happen within the parent set context
+- Better performance for retrieving sets with their buttons
+- Automatic cleanup when deleting a set (all buttons deleted together)
 
 ---
 
 ## Architecture
 
-### Many-to-Many Relationship
+### Entity Relationship
 
 ```
-Button Set 1  ──┐
-                ├──> Radio Button A
-Button Set 2  ──┘
-
-Button Set 2  ──┐
-                ├──> Radio Button B
-Button Set 3  ──┘
+┌──────────────────────────────────┐
+│       ButtonSet Collection       │
+├──────────────────────────────────┤
+│ _id                              │
+│ name (unique globally)           │
+│ description                      │
+│ isActive                         │
+│ createdBy                        │
+│ updatedBy                        │
+│ buttons: [                       │
+│   {                              │
+│     _id (auto-generated)         │
+│     name (unique within set)     │
+│     visibility                   │
+│     isActive                     │
+│     createdAt                    │
+│     updatedAt                    │
+│   }                              │
+│ ]                                │
+└──────────────────────────────────┘
 ```
 
-Radio buttons are independent entities. Button sets maintain an array of button IDs, creating a flexible many-to-many relationship.
+### Key Architectural Decisions
+
+1. **Embedded Subdocuments**:
+   - Radio buttons are embedded within button sets
+   - No separate collection needed
+   - Mongoose automatically generates `_id` for each button subdocument
+2. **Set-Scoped Uniqueness**:
+   - Button names must be unique within each set
+   - Same button name can exist in different sets
+   - Example: "Yes" button can exist in multiple sets
+3. **Atomic Operations**:
+   - Creating/updating/deleting buttons modifies the parent set document
+   - MongoDB guarantees atomicity at document level
+4. **Automatic Cleanup**:
+   - Deleting a button set deletes all its buttons automatically
+   - No orphaned button documents
 
 ---
 
-## Database Collections
+## Database Schema
 
-### 1. radio-buttons Collection
+### ButtonSet Model
 
-Stores independent radio button entities.
-
-**Schema:**
+**Collection**: `button-sets`
 
 ```javascript
 {
   _id: ObjectId,
-  name: String (required, unique globally),
-  visibility: Boolean (default: true),
-  isActive: Boolean (default: true),
-  createdBy: ObjectId (ref: User, required),
-  updatedBy: ObjectId (ref: User),
-  createdAt: DateTime (auto),
-  updatedAt: DateTime (auto)
+  name: {
+    type: String,
+    required: true,
+    unique: true,  // Globally unique across all button sets
+    trim: true
+  },
+  description: {
+    type: String,
+    default: ""
+  },
+  lastButtonId: {
+    type: Number,
+    default: 0,
+    // Counter for generating incremental IDs for buttons
+  },
+  buttons: [  // Embedded subdocuments
+    {
+      _id: ObjectId,  // Auto-generated by Mongoose
+      incrementalId: {
+        type: Number,
+        required: true,
+        // Unique within this set, never reused
+      },
+      name: {
+        type: String,
+        required: true,
+        trim: true  // Must be unique within this set (enforced in controller)
+      },
+      visibility: {
+        type: Boolean,
+        default: true
+      },
+      isActive: {
+        type: Boolean,
+        default: true
+      },
+      createdAt: Date,
+      updatedAt: Date
+    }
+  ],
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdBy: {
+    type: ObjectId,
+    ref: "User",
+    required: true
+  },
+  updatedBy: {
+    type: ObjectId,
+    ref: "User"
+  },
+  createdAt: Date,
+  updatedAt: Date
 }
 ```
 
-**Indexes:**
+**Indexes**:
 
-- `name`: Unique index for fast lookups and uniqueness constraint
-- `isActive`: Single field index for filtering
-- `visibility`: Single field index for filtering
+- `name`: 1 (unique, auto-created)
+- `isActive`: 1 (for filtering)
 
-**Example:**
+**Example Document**:
 
 ```json
 {
-  "_id": "674c1a2b3d4e5f6a7b8c9d10",
-  "name": "Root Canal",
-  "visibility": true,
-  "isActive": true,
-  "createdBy": "674c1a2b3d4e5f6a7b8c9d01",
-  "updatedBy": null,
-  "createdAt": "2025-12-19T10:05:00.000Z",
-  "updatedAt": "2025-12-19T10:05:00.000Z"
-}
-```
-
-### 2. button-sets Collection
-
-Stores button set groups that reference multiple radio buttons.
-
-**Schema:**
-
-```javascript
-{
-  _id: ObjectId,
-  name: String (required, unique),
-  description: String,
-  buttons: [ObjectId] (ref: RadioButton),
-  isActive: Boolean (default: true),
-  createdBy: ObjectId (ref: User, required),
-  updatedBy: ObjectId (ref: User),
-  createdAt: DateTime (auto),
-  updatedAt: DateTime (auto)
-}
-```
-
-**Indexes:**
-
-- `name`: Single field index for fast lookups
-- `isActive`: Single field index for filtering
-
-**Example:**
-
-```json
-{
-  "_id": "674c1a2b3d4e5f6a7b8c9d0e",
+  "_id": "6578abc123def456789012",
   "name": "Treatment Type",
-  "description": "Types of dental treatments available",
+  "description": "Types of dental treatments",
+  "lastButtonId": 3,
   "buttons": [
-    "674c1a2b3d4e5f6a7b8c9d10",
-    "674c1a2b3d4e5f6a7b8c9d11",
-    "674c1a2b3d4e5f6a7b8c9d12"
+    {
+      "_id": "6578abc123def456789013",
+      "incrementalId": 1,
+      "name": "Cleaning",
+      "visibility": true,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "_id": "6578abc123def456789014",
+      "incrementalId": 2,
+      "name": "Filling",
+      "visibility": true,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:35:00.000Z",
+      "updatedAt": "2024-01-15T10:35:00.000Z"
+    },
+    {
+      "_id": "6578abc123def456789015",
+      "incrementalId": 3,
+      "name": "Root Canal",
+      "visibility": false,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:40:00.000Z",
+      "updatedAt": "2024-01-15T14:20:00.000Z"
+    }
   ],
   "isActive": true,
-  "createdBy": "674c1a2b3d4e5f6a7b8c9d01",
-  "updatedBy": null,
-  "createdAt": "2025-12-19T10:00:00.000Z",
-  "updatedAt": "2025-12-19T10:00:00.000Z"
+  "createdBy": "6578abc123def456789001",
+  "updatedBy": "6578abc123def456789001",
+  "createdAt": "2024-01-15T10:25:00.000Z",
+  "updatedAt": "2024-01-15T14:20:00.000Z"
 }
 ```
 
 ---
 
-## Field Descriptions
+## Incremental ID System
 
-### Radio Button Fields
+### Purpose
 
-| Field        | Type     | Required | Description                                         |
-| ------------ | -------- | -------- | --------------------------------------------------- |
-| `_id`        | ObjectId | Auto     | Unique identifier                                   |
-| `name`       | String   | Yes      | Button name (must be unique globally)               |
-| `visibility` | Boolean  | No       | Controls if button is visible in UI (default: true) |
-| `isActive`   | Boolean  | No       | Active status (default: true)                       |
-| `createdBy`  | ObjectId | Yes      | User who created the button                         |
-| `updatedBy`  | ObjectId | No       | User who last updated the button                    |
-| `createdAt`  | DateTime | Auto     | Creation timestamp                                  |
-| `updatedAt`  | DateTime | Auto     | Last update timestamp                               |
+Each radio button receives a unique **incremental ID** that is:
 
-### Button Set Fields
+- **Never reused**: Even if a button is deleted, its incremental ID is never assigned to a new button
+- **Sequential**: IDs increment from 1, 2, 3... within each button set
+- **Stable**: Perfect for frontend mapping and tracking, unlike MongoDB's `_id` which changes on recreation
 
-| Field         | Type            | Required | Description                           |
-| ------------- | --------------- | -------- | ------------------------------------- |
-| `_id`         | ObjectId        | Auto     | Unique identifier                     |
-| `name`        | String          | Yes      | Button set name (must be unique)      |
-| `description` | String          | No       | Description of the button set         |
-| `buttons`     | Array[ObjectId] | No       | Array of radio button IDs in this set |
-| `isActive`    | Boolean         | No       | Active status (default: true)         |
-| `createdBy`   | ObjectId        | Yes      | User who created the button set       |
-| `updatedBy`   | ObjectId        | No       | User who last updated the button set  |
-| `createdAt`   | DateTime        | Auto     | Creation timestamp                    |
-| `updatedAt`   | DateTime        | Auto     | Last update timestamp                 |
+### How It Works
+
+1. **ButtonSet Counter**: Each button set maintains a `lastButtonId` counter (starts at 0)
+2. **Auto-Increment**: When creating a button, the counter increments: `lastButtonId += 1`
+3. **Assignment**: The new value becomes the button's `incrementalId`
+4. **Persistence**: The counter never decreases, even after deletions
+
+### Schema Fields
+
+```javascript
+ButtonSet: {
+  lastButtonId: {
+    type: Number,
+    default: 0,
+    // Counter for generating incremental IDs
+  }
+}
+
+RadioButton (subdocument): {
+  incrementalId: {
+    type: Number,
+    required: true,
+    // Unique within the parent button set
+  }
+}
+```
+
+### Example Flow
+
+```javascript
+// Initial state
+ButtonSet: { lastButtonId: 0, buttons: [] }
+
+// Create button "Cleaning"
+lastButtonId: 0 → 1
+Button: { incrementalId: 1, name: "Cleaning" }
+
+// Create button "Filling"
+lastButtonId: 1 → 2
+Button: { incrementalId: 2, name: "Filling" }
+
+// Create button "Root Canal"
+lastButtonId: 2 → 3
+Button: { incrementalId: 3, name: "Root Canal" }
+
+// Delete button "Filling" (incrementalId: 2)
+lastButtonId: stays at 3 (never decreases)
+Buttons: [{ incrementalId: 1 }, { incrementalId: 3 }]
+
+// Create new button "Extraction"
+lastButtonId: 3 → 4
+Button: { incrementalId: 4, name: "Extraction" }
+// Note: incrementalId 2 is never reused!
+```
+
+### Benefits for Frontend
+
+```javascript
+// Frontend can safely map by incrementalId
+const buttonMapping = {
+  1: "Cleaning",
+  3: "Root Canal",
+  4: "Extraction",
+  // ID 2 permanently retired
+};
+
+// When button name changes, incrementalId remains the same
+// Frontend updates automatically without remapping
+```
+
+---
+
+## Archive System
+
+### Purpose
+
+Instead of permanently deleting button sets or radio buttons, the system **archives** them to:
+
+- **Preserve History**: Keep a record of all deleted items
+- **Audit Trail**: Track who deleted what and when
+- **Potential Recovery**: Ability to restore archived items (future feature)
+- **Compliance**: Meet data retention requirements
+
+### Archive Collection
+
+**Collection**: `archive-radio-buttons`
+
+```javascript
+ArchiveRadioButton: {
+  originalId: ObjectId,        // Original ButtonSet _id
+  name: String,
+  description: String,
+  lastButtonId: Number,
+  buttons: [                   // Archived button subdocuments
+    {
+      incrementalId: Number,
+      name: String,
+      visibility: Boolean,
+      isActive: Boolean,
+      originalId: ObjectId,    // Original button _id
+      createdAt: Date,
+      updatedAt: Date
+    }
+  ],
+  isActive: Boolean,
+  createdBy: ObjectId,
+  updatedBy: ObjectId,
+
+  // Deletion metadata
+  deletedBy: ObjectId,         // Who deleted it
+  deletedAt: Date,             // When it was deleted
+  deletionReason: String,      // Why it was deleted (optional)
+
+  // Original timestamps
+  originalCreatedAt: Date,
+  originalUpdatedAt: Date
+}
+```
+
+### How It Works
+
+#### Deleting a Button Set
+
+1. **Archive Creation**: Copy entire button set to archive collection with deletion metadata
+2. **Deletion**: Remove from main `button-sets` collection
+3. **Result**: Users can't see it, but data is preserved in archive
+
+```javascript
+// Before deletion
+ButtonSet: { _id: "abc123", name: "Treatment Type", buttons: [...] }
+
+// After deletion
+// Main collection: (deleted)
+// Archive collection:
+ArchiveRadioButton: {
+  originalId: "abc123",
+  name: "Treatment Type",
+  buttons: [...],
+  deletedBy: "user_id",
+  deletedAt: "2024-12-20T10:00:00Z",
+  deletionReason: "Manual deletion"
+}
+```
+
+#### Deleting Individual Button
+
+1. **Archive Creation**: Create archive entry with parent set info + only the deleted button
+2. **Deletion**: Remove button subdocument from button set
+3. **Result**: Button archived, set remains active with other buttons
+
+```javascript
+// Deleting button "Filling" from set "Treatment Type"
+ArchiveRadioButton: {
+  originalId: "set_abc123",           // Parent set ID
+  name: "Treatment Type - Button: Filling",
+  description: "Archived individual button from set: Treatment Type",
+  buttons: [
+    {
+      incrementalId: 2,
+      name: "Filling",
+      originalId: "button_xyz789"      // Original button _id
+    }
+  ],
+  deletedBy: "user_id",
+  deletedAt: "2024-12-20T10:00:00Z",
+  deletionReason: "Individual button deletion"
+}
+```
+
+### Deletion Reason (Optional)
+
+You can provide a deletion reason in the request body:
+
+```json
+DELETE /api/radio-buttons/button-sets/:id
+{
+  "deletionReason": "Service discontinued"
+}
+```
+
+If not provided, defaults to "Manual deletion".
+
+### Archive Queries (Future Feature)
+
+Archive collections are indexed for efficient querying:
+
+- By `originalId`: Find all archives for a specific set
+- By `deletedBy`: See what a user deleted
+- By `deletedAt`: Time-based queries
+- By `name`: Search archived items
 
 ---
 
@@ -161,109 +409,120 @@ Stores button set groups that reference multiple radio buttons.
 
 ### Base URL
 
-```
-/api/radio-buttons
-```
+All radio button endpoints are prefixed with: `/api/radio-buttons`
 
 ### Authentication
 
-All endpoints require authentication via Bearer token:
-
-```
-Authorization: Bearer <your-jwt-token>
-```
+All endpoints require JWT authentication via the `Authorization: Bearer <token>` header.
 
 ### Permission Levels
 
-- **View/Read**: All authenticated users
-- **Create/Update/Delete**: Admin and SuperAdmin only
+- **All Authenticated Users**: GET requests (read-only)
+- **Admin & SuperAdmin**: POST, PUT, DELETE requests (mutations)
 
 ---
 
-## Button Set Endpoints
+## 1. Button Set Endpoints
 
-### 1. Create Button Set
+### 1.1 Create Button Set
 
-**POST** `/api/radio-buttons/button-sets`
+**Endpoint**: `POST /api/radio-buttons/button-sets`
 
 **Access**: Admin, SuperAdmin
 
-**Request Body:**
+**Description**: Creates a new button set with an empty buttons array.
+
+**Request Body**:
 
 ```json
 {
   "name": "Treatment Type",
-  "description": "Types of dental treatments available"
+  "description": "Types of dental treatments",
+  "isActive": true
 }
 ```
 
-**Response (201 Created):**
+**Response** (201):
 
 ```json
 {
   "success": true,
-  "message": "Button set created successfully",
   "data": {
-    "_id": "674c1a2b3d4e5f6a7b8c9d0e",
+    "_id": "6578abc123def456789012",
     "name": "Treatment Type",
-    "description": "Types of dental treatments available",
+    "description": "Types of dental treatments",
     "buttons": [],
     "isActive": true,
-    "createdBy": "674c1a2b3d4e5f6a7b8c9d01",
-    "createdAt": "2025-12-19T10:00:00.000Z",
-    "updatedAt": "2025-12-19T10:00:00.000Z"
+    "createdBy": {
+      "_id": "6578abc123def456789001",
+      "name": "Admin User",
+      "email": "admin@example.com"
+    },
+    "createdAt": "2024-01-15T10:25:00.000Z",
+    "updatedAt": "2024-01-15T10:25:00.000Z"
   }
 }
 ```
 
-**Error Responses:**
+**Error Responses**:
 
-- **400**: Button set name already exists
-- **401**: Unauthorized
-- **403**: Forbidden (not admin/superAdmin)
+- `400`: Missing required field (name)
+- `400`: Duplicate set name (code: 11000)
+- `401`: Unauthorized
+- `403`: Forbidden
 
 ---
 
-### 2. Get All Button Sets
+### 1.2 Get All Button Sets
 
-**GET** `/api/radio-buttons/button-sets`
+**Endpoint**: `GET /api/radio-buttons/button-sets`
 
 **Access**: All authenticated users
 
-**Query Parameters:**
+**Query Parameters**:
 
-- `isActive` (boolean, optional): Filter by active status
-- `limit` (number, optional): Records per page (default: 100)
-- `skip` (number, optional): Skip records for pagination (default: 0)
+- `isActive` (optional): Filter by active status (true/false)
+- `limit` (optional): Number of results per page (default: 10)
+- `skip` (optional): Number of results to skip (default: 0)
 
-**Example Request:**
+**Example Request**:
 
 ```
-GET /api/radio-buttons/button-sets?isActive=true&limit=50&skip=0
+GET /api/radio-buttons/button-sets?isActive=true&limit=20&skip=0
 ```
 
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
   "count": 2,
-  "total": 2,
   "data": [
     {
-      "_id": "674c1a2b3d4e5f6a7b8c9d0e",
+      "_id": "6578abc123def456789012",
       "name": "Treatment Type",
-      "description": "Types of dental treatments available",
-      "buttons": ["674c1a2b3d4e5f6a7b8c9d10", "674c1a2b3d4e5f6a7b8c9d11"],
+      "description": "Types of dental treatments",
+      "buttons": [
+        {
+          "_id": "6578abc123def456789013",
+          "name": "Cleaning",
+          "visibility": true,
+          "isActive": true
+        },
+        {
+          "_id": "6578abc123def456789014",
+          "name": "Filling",
+          "visibility": true,
+          "isActive": true
+        }
+      ],
       "isActive": true,
       "createdBy": {
-        "_id": "674c1a2b3d4e5f6a7b8c9d01",
-        "name": "Admin User",
-        "email": "admin@example.com"
+        "_id": "6578abc123def456789001",
+        "name": "Admin User"
       },
-      "updatedBy": null,
-      "createdAt": "2025-12-19T10:00:00.000Z",
-      "updatedAt": "2025-12-19T10:00:00.000Z"
+      "createdAt": "2024-01-15T10:25:00.000Z",
+      "updatedAt": "2024-01-15T14:20:00.000Z"
     }
   ]
 }
@@ -271,110 +530,94 @@ GET /api/radio-buttons/button-sets?isActive=true&limit=50&skip=0
 
 ---
 
-### 3. Get Button Set by ID
+### 1.3 Get Button Set by ID
 
-**GET** `/api/radio-buttons/button-sets/:id`
+**Endpoint**: `GET /api/radio-buttons/button-sets/:id`
 
 **Access**: All authenticated users
 
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
   "data": {
-    "_id": "674c1a2b3d4e5f6a7b8c9d0e",
+    "_id": "6578abc123def456789012",
     "name": "Treatment Type",
-    "description": "Types of dental treatments available",
+    "description": "Types of dental treatments",
     "buttons": [
       {
-        "_id": "674c1a2b3d4e5f6a7b8c9d10",
-        "name": "Root Canal",
+        "_id": "6578abc123def456789013",
+        "name": "Cleaning",
         "visibility": true,
-        "isActive": true
-      },
-      {
-        "_id": "674c1a2b3d4e5f6a7b8c9d11",
-        "name": "Filling",
-        "visibility": true,
-        "isActive": true
+        "isActive": true,
+        "createdAt": "2024-01-15T10:30:00.000Z",
+        "updatedAt": "2024-01-15T10:30:00.000Z"
       }
     ],
     "isActive": true,
     "createdBy": {
-      "_id": "674c1a2b3d4e5f6a7b8c9d01",
+      "_id": "6578abc123def456789001",
       "name": "Admin User",
       "email": "admin@example.com"
     },
-    "updatedBy": null,
-    "createdAt": "2025-12-19T10:00:00.000Z",
-    "updatedAt": "2025-12-19T10:00:00.000Z"
+    "createdAt": "2024-01-15T10:25:00.000Z",
+    "updatedAt": "2024-01-15T14:20:00.000Z"
   }
 }
 ```
 
-**Note**: The `buttons` array is automatically populated with full button details.
-
-**Error Responses:**
-
-- **404**: Button set not found
-
 ---
 
-### 4. Update Button Set
+### 1.4 Update Button Set
 
-**PUT** `/api/radio-buttons/button-sets/:id`
+**Endpoint**: `PUT /api/radio-buttons/button-sets/:id`
 
 **Access**: Admin, SuperAdmin
 
-**Request Body:**
+**Description**: Updates button set properties (name, description, isActive). Does not modify buttons - use button-specific endpoints for that.
+
+**Request Body** (all fields optional):
 
 ```json
 {
   "name": "Treatment Type Updated",
   "description": "Updated description",
-  "isActive": true
+  "isActive": false
 }
 ```
 
-**Note**: All fields are optional. Only provided fields will be updated. To manage buttons in the set, use the dedicated endpoints below.
-
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
-  "message": "Button set updated successfully",
   "data": {
-    "_id": "674c1a2b3d4e5f6a7b8c9d0e",
+    "_id": "6578abc123def456789012",
     "name": "Treatment Type Updated",
     "description": "Updated description",
-    "buttons": ["674c1a2b3d4e5f6a7b8c9d10"],
-    "isActive": true,
-    "createdBy": "674c1a2b3d4e5f6a7b8c9d01",
-    "updatedBy": "674c1a2b3d4e5f6a7b8c9d01",
-    "createdAt": "2025-12-19T10:00:00.000Z",
-    "updatedAt": "2025-12-19T11:00:00.000Z"
+    "buttons": [...],
+    "isActive": false,
+    "updatedBy": {
+      "_id": "6578abc123def456789002",
+      "name": "SuperAdmin User"
+    },
+    "updatedAt": "2024-01-15T15:45:00.000Z"
   }
 }
 ```
 
-**Error Responses:**
-
-- **400**: Button set name already exists (if changing name)
-- **404**: Button set not found
-
 ---
 
-### 5. Delete Button Set
+### 1.5 Delete Button Set
 
-**DELETE** `/api/radio-buttons/button-sets/:id`
+**Endpoint**: `DELETE /api/radio-buttons/button-sets/:id`
 
 **Access**: Admin, SuperAdmin
 
-**Important**: Deleting a button set does NOT delete the buttons themselves. Only the association is removed.
+**Description**: Permanently deletes a button set and all its embedded buttons.
 
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
@@ -383,155 +626,19 @@ GET /api/radio-buttons/button-sets?isActive=true&limit=50&skip=0
 }
 ```
 
-**Error Responses:**
-
-- **404**: Button set not found
-
 ---
 
-### 6. Add Buttons to Button Set
+## 2. Radio Button Endpoints (Embedded)
 
-**POST** `/api/radio-buttons/button-sets/:id/buttons`
+### 2.1 Create Radio Button
+
+**Endpoint**: `POST /api/radio-buttons/button-sets/:buttonSetId/buttons`
 
 **Access**: Admin, SuperAdmin
 
-Add one or more buttons to a button set.
+**Description**: Creates a new radio button within a specific button set.
 
-**Request Body:**
-
-```json
-{
-  "buttonIds": [
-    "674c1a2b3d4e5f6a7b8c9d10",
-    "674c1a2b3d4e5f6a7b8c9d11",
-    "674c1a2b3d4e5f6a7b8c9d12"
-  ]
-}
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "success": true,
-  "message": "Buttons added to button set successfully",
-  "data": {
-    "_id": "674c1a2b3d4e5f6a7b8c9d0e",
-    "name": "Treatment Type",
-    "description": "Types of dental treatments available",
-    "buttons": [
-      {
-        "_id": "674c1a2b3d4e5f6a7b8c9d10",
-        "name": "Root Canal",
-        "visibility": true,
-        "isActive": true
-      },
-      {
-        "_id": "674c1a2b3d4e5f6a7b8c9d11",
-        "name": "Filling",
-        "visibility": true,
-        "isActive": true
-      },
-      {
-        "_id": "674c1a2b3d4e5f6a7b8c9d12",
-        "name": "Extraction",
-        "visibility": true,
-        "isActive": true
-      }
-    ],
-    "isActive": true,
-    "updatedBy": {
-      "_id": "674c1a2b3d4e5f6a7b8c9d01",
-      "name": "Admin User",
-      "email": "admin@example.com"
-    },
-    "createdAt": "2025-12-19T10:00:00.000Z",
-    "updatedAt": "2025-12-19T11:30:00.000Z"
-  }
-}
-```
-
-**Notes:**
-
-- Duplicate button IDs are automatically avoided
-- All button IDs must be valid (exist in database)
-- Returns fully populated button set with button details
-
-**Error Responses:**
-
-- **400**: Button IDs array is required or empty
-- **404**: Button set not found or one or more button IDs are invalid
-
----
-
-### 7. Remove Buttons from Button Set
-
-**DELETE** `/api/radio-buttons/button-sets/:id/buttons`
-
-**Access**: Admin, SuperAdmin
-
-Remove one or more buttons from a button set.
-
-**Request Body:**
-
-```json
-{
-  "buttonIds": ["674c1a2b3d4e5f6a7b8c9d10", "674c1a2b3d4e5f6a7b8c9d11"]
-}
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "success": true,
-  "message": "Buttons removed from button set successfully",
-  "data": {
-    "_id": "674c1a2b3d4e5f6a7b8c9d0e",
-    "name": "Treatment Type",
-    "description": "Types of dental treatments available",
-    "buttons": [
-      {
-        "_id": "674c1a2b3d4e5f6a7b8c9d12",
-        "name": "Extraction",
-        "visibility": true,
-        "isActive": true
-      }
-    ],
-    "isActive": true,
-    "updatedBy": {
-      "_id": "674c1a2b3d4e5f6a7b8c9d01",
-      "name": "Admin User",
-      "email": "admin@example.com"
-    },
-    "createdAt": "2025-12-19T10:00:00.000Z",
-    "updatedAt": "2025-12-19T11:45:00.000Z"
-  }
-}
-```
-
-**Notes:**
-
-- Removing buttons from a set does NOT delete the buttons themselves
-- Invalid button IDs are silently ignored
-- Returns fully populated button set with remaining button details
-
-**Error Responses:**
-
-- **400**: Button IDs array is required or empty
-- **404**: Button set not found
-
----
-
-## Radio Button Endpoints
-
-### 1. Create Radio Button
-
-**POST** `/api/radio-buttons`
-
-**Access**: Admin, SuperAdmin
-
-**Request Body:**
+**Request Body**:
 
 ```json
 {
@@ -541,78 +648,80 @@ Remove one or more buttons from a button set.
 }
 ```
 
-**Note**: `visibility` and `isActive` are optional (default: true)
-
-**Response (201 Created):**
+**Response** (201):
 
 ```json
 {
   "success": true,
-  "message": "Radio button created successfully",
   "data": {
-    "_id": "674c1a2b3d4e5f6a7b8c9d10",
-    "name": "Root Canal",
-    "visibility": true,
-    "isActive": true,
-    "createdBy": {
-      "_id": "674c1a2b3d4e5f6a7b8c9d01",
-      "name": "Admin User",
-      "email": "admin@example.com"
+    "_id": "6578abc123def456789012",
+    "name": "Treatment Type",
+    "buttons": [
+      {
+        "_id": "6578abc123def456789015",
+        "name": "Root Canal",
+        "visibility": true,
+        "isActive": true,
+        "createdAt": "2024-01-15T16:00:00.000Z",
+        "updatedAt": "2024-01-15T16:00:00.000Z"
+      }
+    ],
+    "updatedBy": {
+      "_id": "6578abc123def456789001",
+      "name": "Admin User"
     },
-    "createdAt": "2025-12-19T10:05:00.000Z",
-    "updatedAt": "2025-12-19T10:05:00.000Z"
+    "updatedAt": "2024-01-15T16:00:00.000Z"
   }
 }
 ```
 
-**Error Responses:**
+**Error Responses**:
 
-- **400**: Button name is required OR Button with this name already exists
-- **401**: Unauthorized
-- **403**: Forbidden (not admin/superAdmin)
+- `400`: Missing button name
+- `400`: Duplicate button name within the set
+- `404`: Button set not found
 
 ---
 
-### 2. Get All Radio Buttons
+### 2.2 Get All Buttons in Set
 
-**GET** `/api/radio-buttons`
+**Endpoint**: `GET /api/radio-buttons/button-sets/:buttonSetId/buttons`
 
 **Access**: All authenticated users
 
-**Query Parameters:**
+**Query Parameters**:
 
-- `isActive` (boolean, optional): Filter by active status
-- `visibility` (boolean, optional): Filter by visibility
-- `limit` (number, optional): Records per page (default: 100)
-- `skip` (number, optional): Skip records for pagination (default: 0)
+- `isActive` (optional): Filter by active status
+- `visibility` (optional): Filter by visibility
 
-**Example Request:**
+**Example Request**:
 
 ```
-GET /api/radio-buttons?isActive=true&visibility=true&limit=50
+GET /api/radio-buttons/button-sets/6578abc123def456789012/buttons?isActive=true&visibility=true
 ```
 
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
   "count": 3,
-  "total": 3,
   "data": [
     {
-      "_id": "674c1a2b3d4e5f6a7b8c9d10",
-      "name": "Root Canal",
+      "_id": "6578abc123def456789013",
+      "name": "Cleaning",
       "visibility": true,
       "isActive": true,
-      "createdBy": {
-        "_id": "674c1a2b3d4e5f6a7b8c9d01",
-        "name": "Admin User",
-        "email": "admin@example.com"
-      },
-      "updatedBy": null,
-      "createdAt": "2025-12-19T10:05:00.000Z",
-      "updatedAt": "2025-12-19T10:05:00.000Z"
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "_id": "6578abc123def456789014",
+      "name": "Filling",
+      "visibility": true,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:35:00.000Z",
+      "updatedAt": "2024-01-15T10:35:00.000Z"
     }
   ]
 }
@@ -620,126 +729,99 @@ GET /api/radio-buttons?isActive=true&visibility=true&limit=50
 
 ---
 
-### 3. Get Radio Button by ID
+### 2.3 Get Button by ID
 
-**GET** `/api/radio-buttons/:id`
+**Endpoint**: `GET /api/radio-buttons/button-sets/:buttonSetId/buttons/:buttonId`
 
 **Access**: All authenticated users
 
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
   "data": {
-    "_id": "674c1a2b3d4e5f6a7b8c9d10",
-    "name": "Root Canal",
+    "_id": "6578abc123def456789013",
+    "name": "Cleaning",
     "visibility": true,
     "isActive": true,
-    "createdBy": {
-      "_id": "674c1a2b3d4e5f6a7b8c9d01",
-      "name": "Admin User",
-      "email": "admin@example.com"
-    },
-    "updatedBy": null,
-    "createdAt": "2025-12-19T10:05:00.000Z",
-    "updatedAt": "2025-12-19T10:05:00.000Z"
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
   }
 }
 ```
 
-**Error Responses:**
-
-- **404**: Radio button not found
-
 ---
 
-### 4. Update Radio Button
+### 2.4 Update Radio Button
 
-**PUT** `/api/radio-buttons/:id`
+**Endpoint**: `PUT /api/radio-buttons/button-sets/:buttonSetId/buttons/:buttonId`
 
 **Access**: Admin, SuperAdmin
 
-**Request Body:**
+**Request Body** (all fields optional):
 
 ```json
 {
-  "name": "Root Canal Treatment",
-  "visibility": true,
+  "name": "Deep Cleaning",
+  "visibility": false,
   "isActive": true
 }
 ```
 
-**Note**: All fields are optional. Only provided fields will be updated.
-
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
-  "message": "Radio button updated successfully",
   "data": {
-    "_id": "674c1a2b3d4e5f6a7b8c9d10",
-    "name": "Root Canal Treatment",
-    "visibility": true,
-    "isActive": true,
-    "createdBy": {
-      "_id": "674c1a2b3d4e5f6a7b8c9d01",
-      "name": "Admin User",
-      "email": "admin@example.com"
-    },
+    "_id": "6578abc123def456789012",
+    "name": "Treatment Type",
+    "buttons": [
+      {
+        "_id": "6578abc123def456789013",
+        "name": "Deep Cleaning",
+        "visibility": false,
+        "isActive": true,
+        "updatedAt": "2024-01-15T17:00:00.000Z"
+      }
+    ],
     "updatedBy": {
-      "_id": "674c1a2b3d4e5f6a7b8c9d01",
-      "name": "Admin User",
-      "email": "admin@example.com"
-    },
-    "createdAt": "2025-12-19T10:05:00.000Z",
-    "updatedAt": "2025-12-19T11:15:00.000Z"
+      "_id": "6578abc123def456789001",
+      "name": "Admin User"
+    }
   }
 }
 ```
 
-**Error Responses:**
-
-- **400**: Button with this name already exists
-- **404**: Radio button not found
-
 ---
 
-### 5. Delete Radio Button
+### 2.5 Delete Radio Button
 
-**DELETE** `/api/radio-buttons/:id`
+**Endpoint**: `DELETE /api/radio-buttons/button-sets/:buttonSetId/buttons/:buttonId`
 
 **Access**: Admin, SuperAdmin
 
-**Important**: Deleting a button automatically removes it from all button sets that reference it.
-
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
-  "message": "Radio button deleted successfully"
+  "message": "Button deleted successfully"
 }
 ```
 
-**Error Responses:**
-
-- **404**: Radio button not found
-
 ---
 
-## Bulk Operations
+## 3. Bulk Operations
 
-### 1. Bulk Create Radio Buttons
+### 3.1 Bulk Create Buttons
 
-**POST** `/api/radio-buttons/bulk`
+**Endpoint**: `POST /api/radio-buttons/button-sets/:buttonSetId/buttons/bulk`
 
 **Access**: Admin, SuperAdmin
 
-Create multiple radio buttons at once.
-
-**Request Body:**
+**Request Body**:
 
 ```json
 {
@@ -755,668 +837,507 @@ Create multiple radio buttons at once.
       "isActive": true
     },
     {
-      "name": "Extraction"
-    }
-  ]
-}
-```
-
-**Note**: Each button must have a `name`. Other fields are optional.
-
-**Response (201 Created):**
-
-```json
-{
-  "success": true,
-  "message": "Successfully created 3 radio buttons",
-  "created": 3,
-  "failed": 0,
-  "data": [
-    {
-      "_id": "674c1a2b3d4e5f6a7b8c9d11",
-      "name": "Cleaning",
-      "visibility": true,
-      "isActive": true,
-      "createdBy": "674c1a2b3d4e5f6a7b8c9d01",
-      "createdAt": "2025-12-19T10:20:00.000Z",
-      "updatedAt": "2025-12-19T10:20:00.000Z"
-    },
-    {
-      "_id": "674c1a2b3d4e5f6a7b8c9d12",
-      "name": "Filling",
-      "visibility": true,
-      "isActive": true,
-      "createdBy": "674c1a2b3d4e5f6a7b8c9d01",
-      "createdAt": "2025-12-19T10:20:00.000Z",
-      "updatedAt": "2025-12-19T10:20:00.000Z"
-    },
-    {
-      "_id": "674c1a2b3d4e5f6a7b8c9d13",
       "name": "Extraction",
       "visibility": true,
-      "isActive": true,
-      "createdBy": "674c1a2b3d4e5f6a7b8c9d01",
-      "createdAt": "2025-12-19T10:20:00.000Z",
-      "updatedAt": "2025-12-19T10:20:00.000Z"
+      "isActive": true
     }
   ]
 }
 ```
 
-**Partial Success Response:**
-If some buttons fail (e.g., duplicate names or missing name):
+**Response** (201):
 
 ```json
 {
   "success": true,
-  "message": "Successfully created 2 radio buttons",
+  "created": 3,
+  "failed": 0,
+  "data": {
+    "_id": "6578abc123def456789012",
+    "name": "Treatment Type",
+    "buttons": [
+      {
+        "_id": "6578abc123def456789013",
+        "name": "Cleaning",
+        "visibility": true,
+        "isActive": true
+      },
+      {
+        "_id": "6578abc123def456789014",
+        "name": "Filling",
+        "visibility": true,
+        "isActive": true
+      },
+      {
+        "_id": "6578abc123def456789015",
+        "name": "Extraction",
+        "visibility": true,
+        "isActive": true
+      }
+    ]
+  },
+  "errors": []
+}
+```
+
+**Partial Success Example**:
+
+```json
+{
+  "success": true,
   "created": 2,
   "failed": 1,
-  "data": [
-    /* successfully created buttons */
-  ],
+  "data": {...},
   "errors": [
     {
-      "name": "Cleaning",
-      "error": "Duplicate name"
+      "button": {
+        "name": "Filling",
+        "visibility": true,
+        "isActive": true
+      },
+      "error": "Button with name 'Filling' already exists in this set"
     }
   ]
 }
 ```
 
-**Error Responses:**
-
-- **400**: Buttons array is required or empty
-
 ---
 
-### 2. Bulk Update Radio Buttons
+### 3.2 Bulk Update Buttons
 
-**PUT** `/api/radio-buttons/bulk`
+**Endpoint**: `PUT /api/radio-buttons/button-sets/:buttonSetId/buttons/bulk`
 
 **Access**: Admin, SuperAdmin
 
-Update multiple radio buttons at once.
-
-**Request Body:**
+**Request Body**:
 
 ```json
 {
-  "buttons": [
+  "updates": [
     {
-      "id": "674c1a2b3d4e5f6a7b8c9d11",
+      "id": "6578abc123def456789013",
       "name": "Deep Cleaning",
       "visibility": true
     },
     {
-      "id": "674c1a2b3d4e5f6a7b8c9d12",
-      "visibility": false
+      "id": "6578abc123def456789014",
+      "isActive": false
     }
   ]
 }
 ```
 
-**Note**: Each button object must include `id`. Other fields are optional.
-
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
-  "message": "Successfully updated 2 radio buttons",
   "updated": 2,
   "failed": 0,
-  "data": [
-    /* updated buttons */
-  ]
+  "data": {
+    "_id": "6578abc123def456789012",
+    "name": "Treatment Type",
+    "buttons": [...]
+  },
+  "errors": []
 }
 ```
-
-**Partial Success Response:**
-
-```json
-{
-  "success": true,
-  "message": "Successfully updated 1 radio buttons",
-  "updated": 1,
-  "failed": 1,
-  "data": [
-    /* updated buttons */
-  ],
-  "errors": [
-    {
-      "id": "674c1a2b3d4e5f6a7b8c9d12",
-      "error": "Radio button not found"
-    }
-  ]
-}
-```
-
-**Error Responses:**
-
-- **400**: Buttons array is required or empty
 
 ---
 
-### 3. Bulk Delete Radio Buttons
+### 3.3 Bulk Delete Buttons
 
-**DELETE** `/api/radio-buttons/bulk`
+**Endpoint**: `DELETE /api/radio-buttons/button-sets/:buttonSetId/buttons/bulk`
 
 **Access**: Admin, SuperAdmin
 
-Delete multiple radio buttons at once.
-
-**Important**: All deleted buttons are automatically removed from all button sets that reference them.
-
-**Request Body:**
+**Request Body**:
 
 ```json
 {
-  "ids": [
-    "674c1a2b3d4e5f6a7b8c9d11",
-    "674c1a2b3d4e5f6a7b8c9d12",
-    "674c1a2b3d4e5f6a7b8c9d13"
-  ]
+  "ids": ["6578abc123def456789013", "6578abc123def456789014"]
 }
 ```
 
-**Response (200 OK):**
+**Response** (200):
 
 ```json
 {
   "success": true,
-  "message": "Successfully deleted 3 radio buttons",
-  "deleted": 3
+  "deleted": 2,
+  "failed": 0,
+  "message": "2 buttons deleted successfully",
+  "errors": []
 }
 ```
-
-**Error Responses:**
-
-- **400**: IDs array is required or empty
 
 ---
 
-## Use Cases & Workflows
+## Use Cases and Examples
 
-### Use Case 1: Setting Up Treatment Options
+### Use Case 1: Creating a Treatment Type Radio Button Set
+
+**Step 1**: Create the button set
 
 ```bash
-# Step 1: Create buttons in bulk
-POST /api/radio-buttons/bulk
-{
-  "buttons": [
-    { "name": "Cleaning" },
-    { "name": "Filling" },
-    { "name": "Root Canal" },
-    { "name": "Extraction" },
-    { "name": "Crown" }
-  ]
-}
-# Returns button IDs: [id1, id2, id3, id4, id5]
-
-# Step 2: Create button set
 POST /api/radio-buttons/button-sets
 {
   "name": "Treatment Type",
-  "description": "Available dental treatments"
-}
-# Returns set ID: set_id_1
-
-# Step 3: Add buttons to set
-POST /api/radio-buttons/button-sets/set_id_1/buttons
-{
-  "buttonIds": ["id1", "id2", "id3", "id4", "id5"]
+  "description": "Types of dental treatments"
 }
 ```
 
-### Use Case 2: Reusing Buttons Across Multiple Forms
+**Step 2**: Add buttons to the set (bulk create)
 
 ```bash
-# Scenario: "Cleaning" button used in both "Treatment" and "Quick Services" sets
-
-# Get button ID first
-GET /api/radio-buttons?name=Cleaning
-# Returns: button_id_cleaning
-
-# Add to Treatment set
-POST /api/radio-buttons/button-sets/treatment_set_id/buttons
+POST /api/radio-buttons/button-sets/:buttonSetId/buttons/bulk
 {
-  "buttonIds": ["button_id_cleaning"]
-}
-
-# Add same button to Quick Services set
-POST /api/radio-buttons/button-sets/quick_services_set_id/buttons
-{
-  "buttonIds": ["button_id_cleaning"]
+  "buttons": [
+    {"name": "Cleaning", "visibility": true, "isActive": true},
+    {"name": "Filling", "visibility": true, "isActive": true},
+    {"name": "Root Canal", "visibility": true, "isActive": true},
+    {"name": "Extraction", "visibility": true, "isActive": true}
+  ]
 }
 ```
 
-### Use Case 3: Frontend Form Rendering
+**Result**: Button set created with 4 radio buttons embedded
 
-```javascript
-// Fetch button set with populated buttons
-async function renderRadioForm(buttonSetId) {
-  const response = await fetch(
-    `/api/radio-buttons/button-sets/${buttonSetId}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    }
-  );
+---
 
-  const { data: buttonSet } = await response.json();
+### Use Case 2: Temporarily Hiding a Button
 
-  // Filter active & visible buttons
-  const visibleButtons = buttonSet.buttons.filter(
-    (btn) => btn.isActive && btn.visibility
-  );
-
-  // Render form
-  const form = document.createElement("form");
-  form.innerHTML = `<h3>${buttonSet.name}</h3>`;
-
-  visibleButtons.forEach((button) => {
-    const radio = `
-      <label>
-        <input type="radio" name="${buttonSet.name}" value="${button._id}">
-        ${button.name}
-      </label>
-    `;
-    form.innerHTML += radio;
-  });
-
-  document.body.appendChild(form);
-}
-```
-
-### Use Case 4: Temporarily Hiding a Button Globally
+**Scenario**: "Root Canal" treatment is temporarily unavailable.
 
 ```bash
-# Hide "Root Canal" button (affects ALL sets using it)
-PUT /api/radio-buttons/button_id
+PUT /api/radio-buttons/button-sets/:buttonSetId/buttons/:buttonId
 {
   "visibility": false
 }
 ```
 
-### Use Case 5: Reorganizing Button Sets
+**Result**: Button remains in the set but hidden from users when filtering by `visibility: true`
+
+---
+
+### Use Case 3: Reusing Button Names Across Different Sets
+
+**Scenario**: Need "Yes/No" buttons in multiple sets.
 
 ```bash
-# Move buttons from "Old Set" to "New Set"
+# Set 1: Insurance Coverage
+POST /api/radio-buttons/button-sets
+{"name": "Insurance Coverage"}
 
-# Step 1: Remove from old set
-DELETE /api/radio-buttons/button-sets/old_set_id/buttons
-{
-  "buttonIds": ["id1", "id2", "id3"]
-}
+POST /api/radio-buttons/button-sets/:setId1/buttons/bulk
+{"buttons": [{"name": "Yes"}, {"name": "No"}]}
 
-# Step 2: Add to new set
-POST /api/radio-buttons/button-sets/new_set_id/buttons
-{
-  "buttonIds": ["id1", "id2", "id3"]
-}
+# Set 2: Previous Treatment
+POST /api/radio-buttons/button-sets
+{"name": "Previous Treatment"}
+
+POST /api/radio-buttons/button-sets/:setId2/buttons/bulk
+{"buttons": [{"name": "Yes"}, {"name": "No"}]}
+```
+
+**Result**: "Yes" and "No" buttons exist in both sets independently
+
+---
+
+## Frontend Integration
+
+### React Example: Fetching and Displaying Radio Buttons
+
+```javascript
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+
+const RadioButtonSet = ({ buttonSetId }) => {
+  const [buttonSet, setButtonSet] = useState(null);
+  const [selectedButton, setSelectedButton] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchButtonSet = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        const response = await axios.get(
+          `http://localhost:5000/api/radio-buttons/button-sets/${buttonSetId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        setButtonSet(response.data.data);
+        setLoading(false);
+      } catch (error) {
+        console.error("Failed to load button set:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchButtonSet();
+  }, [buttonSetId]);
+
+  if (loading) return <div>Loading...</div>;
+  if (!buttonSet) return null;
+
+  // Filter visible and active buttons
+  const visibleButtons = buttonSet.buttons.filter(
+    (btn) => btn.visibility && btn.isActive
+  );
+
+  return (
+    <div className="radio-button-set">
+      <h3>{buttonSet.name}</h3>
+      {buttonSet.description && <p>{buttonSet.description}</p>}
+
+      <div className="radio-buttons">
+        {visibleButtons.map((button) => (
+          <label key={button._id} className="radio-label">
+            <input
+              type="radio"
+              name={buttonSet._id}
+              value={button._id}
+              checked={selectedButton === button._id}
+              onChange={(e) => setSelectedButton(e.target.value)}
+            />
+            {button.name}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default RadioButtonSet;
 ```
 
 ---
 
-## Business Rules
+## Best Practices
 
-1. **Global Button Uniqueness**: Button names must be unique across the entire system (not just within a set).
+### 1. Button Naming
 
-2. **Many-to-Many Relationship**:
+- Use clear, descriptive names
+- Keep names concise (under 50 characters)
+- Use consistent capitalization
+- Examples: "Cleaning", "Root Canal", "Filling"
 
-   - One button can belong to multiple button sets
-   - One button set can contain multiple buttons
-   - Changes to a button affect all sets that use it
+### 2. Set Organization
 
-3. **Visibility vs isActive**:
+- Create separate sets for different contexts
+- Example: "Treatment Type" vs "Payment Method"
+- Don't mix unrelated buttons in one set
 
-   - `visibility`: Controls UI display (temporary hiding)
-   - `isActive`: Controls logical active status (soft delete)
-   - Prefer `visibility=false` for temporary hiding
-   - Use `isActive=false` for soft deletion
+### 3. Visibility vs Deletion
 
-4. **Cascade Deletion**:
+- **Use `visibility: false`** for temporary hiding (data preserved)
+- **Use DELETE** only when button will never be used again
+- Visibility allows easy restoration
 
-   - Deleting a button automatically removes it from ALL button sets
-   - Deleting a button set does NOT delete its buttons (only removes associations)
+### 4. Performance
 
-5. **Audit Trail**: All create/update operations track `createdBy` and `updatedBy`
+- Button sets load all embedded buttons in one query (efficient)
+- Use pagination when fetching multiple sets
+- Filter by `isActive` and `visibility` on frontend
 
-6. **Button Set Independence**: Button sets can be deleted anytime without affecting buttons
+### 5. Uniqueness
+
+- Button names must be unique **within each set**
+- Same name can exist across different sets
+- Set names must be globally unique
 
 ---
 
-## Error Handling
+## Troubleshooting
 
-All API responses follow a consistent format:
+**Issue**: Can't create button with existing name
 
-**Success Response:**
+**Solution**: Check if button name already exists in that specific set. Same name is allowed in different sets.
+
+---
+
+**Issue**: Deleted button set but need to restore buttons
+
+**Solution**: Embedded documents are deleted with parent. Always backup before deleting sets. Consider using `isActive: false` instead of deletion.
+
+---
+
+**Issue**: Can't find button by ID
+
+**Solution**: Button IDs are scoped to their parent set. Always provide both `buttonSetId` and `buttonId` in requests.
+
+---
+
+## API Summary
+
+| Endpoint                                     | Method | Access     | Description            |
+| -------------------------------------------- | ------ | ---------- | ---------------------- |
+| `/button-sets`                               | POST   | Admin      | Create button set      |
+| `/button-sets`                               | GET    | All        | Get all sets           |
+| `/button-sets/:id`                           | GET    | All        | Get set by ID          |
+| `/button-sets/:id`                           | PUT    | Admin      | Update set             |
+| `/button-sets/:id`                           | DELETE | Admin      | Delete set             |
+| `/button-sets/:setId/buttons`                | POST   | Admin      | Create button          |
+| `/button-sets/:setId/buttons`                | GET    | All        | Get all buttons        |
+| `/button-sets/:setId/buttons/:btnId`         | GET    | All        | Get button by ID       |
+| `/button-sets/:setId/buttons/:btnId`         | PUT    | Admin      | Update button          |
+| `/button-sets/:setId/buttons/:btnId`         | DELETE | Admin      | Delete button          |
+| `/button-sets/:setId/buttons/bulk`           | POST   | Admin      | Bulk create            |
+| `/button-sets/:setId/buttons/bulk`           | PUT    | Admin      | Bulk update            |
+| `/button-sets/:setId/buttons/bulk`           | DELETE | Admin      | Bulk delete            |
+| `/archives/button-sets`                      | GET    | SuperAdmin | Get archived sets      |
+| `/archives/button-sets/:id`                  | GET    | SuperAdmin | Get archived set by ID |
+| `/archives/button-sets/:archiveId/restore`   | POST   | SuperAdmin | Restore archived set   |
+| `/archives/button-sets/:archiveId/permanent` | DELETE | SuperAdmin | Permanently delete     |
+
+---
+
+## Restore Operations (SuperAdmin Only)
+
+### View Archived Button Sets
+
+**Endpoint**: `GET /api/radio-buttons/archives/button-sets`
+
+**Access**: SuperAdmin only
+
+**Query Parameters**:
+
+- `deletedBy`: Filter by user who deleted (ObjectId)
+- `limit`: Number of results (default: 20)
+- `skip`: Pagination offset (default: 0)
+- `sortBy`: Sort field (default: "-deletedAt")
+
+**Response** (200):
 
 ```json
 {
   "success": true,
-  "message": "Operation successful",
+  "count": 2,
+  "total": 5,
+  "data": [
+    {
+      "_id": "archive123",
+      "originalId": "6578abc123def456789012",
+      "name": "Treatment Type",
+      "description": "Select treatment type",
+      "lastButtonId": 3,
+      "buttons": [
+        {
+          "originalId": "btn001",
+          "incrementalId": 1,
+          "name": "Cleaning",
+          "visibility": true,
+          "isActive": true
+        }
+      ],
+      "deletedBy": {
+        "_id": "user123",
+        "name": "Admin User",
+        "email": "admin@example.com"
+      },
+      "deletedAt": "2024-01-20T10:00:00.000Z",
+      "deletionReason": "Accidentally deleted"
+    }
+  ]
+}
+```
+
+---
+
+### Get Archived Button Set by ID
+
+**Endpoint**: `GET /api/radio-buttons/archives/button-sets/:id`
+
+**Access**: SuperAdmin only
+
+**Response** (200):
+
+```json
+{
+  "success": true,
   "data": {
-    /* response data */
+    "_id": "archive123",
+    "originalId": "6578abc123def456789012",
+    "name": "Treatment Type",
+    "buttons": [...],
+    "deletedBy": {...},
+    "deletedAt": "2024-01-20T10:00:00.000Z",
+    "originalCreatedAt": "2024-01-15T10:00:00.000Z"
   }
 }
 ```
 
-**Error Response:**
+---
+
+### Restore Archived Button Set
+
+**Endpoint**: `POST /api/radio-buttons/archives/button-sets/:archiveId/restore`
+
+**Access**: SuperAdmin only
+
+**Request Body** (optional):
+
+```json
+{
+  "newName": "Treatment Type (Restored)" // Optional: rename if original name exists
+}
+```
+
+**Response** (200):
+
+```json
+{
+  "success": true,
+  "message": "Button set restored successfully",
+  "data": {
+    "_id": "new_id_123",
+    "name": "Treatment Type (Restored)",
+    "lastButtonId": 3,
+    "buttons": [
+      {
+        "_id": "new_btn_id",
+        "incrementalId": 1,
+        "name": "Cleaning",
+        "visibility": true,
+        "isActive": true
+      }
+    ],
+    "createdBy": {...},
+    "updatedBy": {...}  // User who performed restore
+  }
+}
+```
+
+**Error Response** (400) - Name Conflict:
 
 ```json
 {
   "success": false,
-  "message": "Error description",
-  "error": "Detailed error message"
-}
-```
-
-**Common HTTP Status Codes:**
-
-- `200 OK`: Successful GET, PUT, DELETE
-- `201 Created`: Successful POST
-- `400 Bad Request`: Validation error, duplicate entry
-- `401 Unauthorized`: Missing or invalid authentication token
-- `403 Forbidden`: Insufficient permissions
-- `404 Not Found`: Resource not found
-- `500 Internal Server Error`: Server error
-
----
-
-## Frontend Integration Examples
-
-### Complete Setup Workflow
-
-```javascript
-// Admin workflow to set up button system
-async function setupButtonSystem() {
-  const token = getAuthToken();
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-
-  // 1. Create buttons
-  const createResponse = await fetch("/api/radio-buttons/bulk", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      buttons: [
-        { name: "Cleaning" },
-        { name: "Filling" },
-        { name: "Root Canal" },
-        { name: "Extraction" },
-      ],
-    }),
-  });
-  const { data: buttons } = await createResponse.json();
-  const buttonIds = buttons.map((b) => b._id);
-
-  // 2. Create button set
-  const setResponse = await fetch("/api/radio-buttons/button-sets", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      name: "Treatment Type",
-      description: "Available treatments",
-    }),
-  });
-  const { data: buttonSet } = await setResponse.json();
-
-  // 3. Associate buttons with set
-  await fetch(`/api/radio-buttons/button-sets/${buttonSet._id}/buttons`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ buttonIds }),
-  });
-
-  console.log("Button system setup complete!");
-}
-```
-
-### Fetching and Rendering Forms
-
-```javascript
-// Fetch and render a button set as a form
-async function loadFormButtons(buttonSetId) {
-  const response = await fetch(
-    `/api/radio-buttons/button-sets/${buttonSetId}`,
-    {
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
-    }
-  );
-
-  const { data: set } = await response.json();
-
-  // Filter for visible and active buttons only
-  return set.buttons.filter((b) => b.isActive && b.visibility);
-}
-
-// React component example
-function RadioButtonForm({ buttonSetId }) {
-  const [buttons, setButtons] = useState([]);
-  const [selected, setSelected] = useState(null);
-
-  useEffect(() => {
-    loadFormButtons(buttonSetId).then(setButtons);
-  }, [buttonSetId]);
-
-  return (
-    <div>
-      {buttons.map((button) => (
-        <label key={button._id}>
-          <input
-            type="radio"
-            name="option"
-            value={button._id}
-            checked={selected === button._id}
-            onChange={() => setSelected(button._id)}
-          />
-          {button.name}
-        </label>
-      ))}
-    </div>
-  );
+  "message": "Button set with name 'Treatment Type' already exists. Please rename the existing set first or provide a new name."
 }
 ```
 
 ---
 
-## Database Maintenance
+### Permanently Delete Archived Set
 
-### Finding Orphaned Buttons
+**Endpoint**: `DELETE /api/radio-buttons/archives/button-sets/:archiveId/permanent`
 
-Buttons not referenced by any button set:
+**Access**: SuperAdmin only
 
-```javascript
-const allButtonIds = db.getCollection("radio-buttons").distinct("_id");
-const usedButtonIds =
-  db
-    .getCollection("button-sets")
-    .aggregate([
-      { $unwind: "$buttons" },
-      { $group: { _id: null, buttonIds: { $addToSet: "$buttons" } } },
-    ])
-    .toArray()[0]?.buttonIds || [];
+**Response** (200):
 
-const orphanedButtons = allButtonIds.filter(
-  (id) => !usedButtonIds.some((used) => used.equals(id))
-);
-
-console.log(`Found ${orphanedButtons.length} orphaned buttons`);
-```
-
-### Cleanup Old Inactive Buttons
-
-```javascript
-const sixMonthsAgo = new Date();
-sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-// Find candidates
-const candidates = db
-  .getCollection("radio-buttons")
-  .find({
-    isActive: false,
-    updatedAt: { $lt: sixMonthsAgo },
-  })
-  .toArray();
-
-const candidateIds = candidates.map((btn) => btn._id);
-
-// Remove from all button sets first
-db.getCollection("button-sets").updateMany(
-  { buttons: { $in: candidateIds } },
-  { $pull: { buttons: { $in: candidateIds } } }
-);
-
-// Delete buttons
-const result = db.getCollection("radio-buttons").deleteMany({
-  _id: { $in: candidateIds },
-});
-
-console.log(`Cleaned up ${result.deletedCount} inactive buttons`);
-```
-
-### Finding Button Usage
-
-Find all button sets using a specific button:
-
-```javascript
-const buttonId = ObjectId("674c1a2b3d4e5f6a7b8c9d10");
-
-const sets = db
-  .getCollection("button-sets")
-  .find(
-    {
-      buttons: buttonId,
-    },
-    {
-      name: 1,
-      description: 1,
-    }
-  )
-  .toArray();
-
-console.log(`Button is used in ${sets.length} button sets:`);
-sets.forEach((set) => console.log(`- ${set.name}`));
+```json
+{
+  "success": true,
+  "message": "Archived button set permanently deleted"
+}
 ```
 
 ---
 
-## Performance Considerations
-
-1. **Indexes**: Proper indexes are in place for common queries
-2. **Pagination**: Always use `limit` and `skip` for large datasets
-3. **Population**: Button sets auto-populate button details (consider caching)
-4. **Frontend Caching**: Cache button sets as they don't change frequently
-5. **Bulk Operations**: Use bulk endpoints to reduce API calls
-6. **Lazy Loading**: For large button sets, consider pagination
-
----
-
-## Security Notes
-
-1. **Authentication**: All endpoints require valid JWT token
-2. **Authorization**: Admin/SuperAdmin roles enforced for mutations
-3. **Input Validation**: All inputs are validated before processing
-4. **Injection Prevention**: MongoDB queries are parameterized
-5. **Audit Trail**: All mutations track user who performed the action
-6. **Rate Limiting**: Consider implementing rate limiting for bulk operations
-
----
-
-## API Endpoint Summary
-
-### Button Sets (7 endpoints)
-
-| Method | Endpoint                   | Access | Description                                   |
-| ------ | -------------------------- | ------ | --------------------------------------------- |
-| POST   | `/button-sets`             | Admin  | Create button set                             |
-| GET    | `/button-sets`             | All    | Get all button sets                           |
-| GET    | `/button-sets/:id`         | All    | Get button set by ID (with buttons populated) |
-| PUT    | `/button-sets/:id`         | Admin  | Update button set                             |
-| DELETE | `/button-sets/:id`         | Admin  | Delete button set                             |
-| POST   | `/button-sets/:id/buttons` | Admin  | Add buttons to set                            |
-| DELETE | `/button-sets/:id/buttons` | Admin  | Remove buttons from set                       |
-
-### Radio Buttons (5 endpoints)
-
-| Method | Endpoint | Access | Description                                 |
-| ------ | -------- | ------ | ------------------------------------------- |
-| POST   | `/`      | Admin  | Create radio button                         |
-| GET    | `/`      | All    | Get all radio buttons                       |
-| GET    | `/:id`   | All    | Get radio button by ID                      |
-| PUT    | `/:id`   | Admin  | Update radio button                         |
-| DELETE | `/:id`   | Admin  | Delete radio button (removes from all sets) |
-
-### Bulk Operations (3 endpoints)
-
-| Method | Endpoint | Access | Description                                 |
-| ------ | -------- | ------ | ------------------------------------------- |
-| POST   | `/bulk`  | Admin  | Bulk create buttons                         |
-| PUT    | `/bulk`  | Admin  | Bulk update buttons                         |
-| DELETE | `/bulk`  | Admin  | Bulk delete buttons (removes from all sets) |
-
-**Total**: 15 API endpoints
-
----
-
-## Architecture Benefits
-
-1. **Reusability**: Create button once, use in multiple contexts
-2. **Consistency**: One button definition ensures consistent naming/behavior across application
-3. **Flexibility**: Easily reorganize buttons into different sets without recreation
-4. **Maintainability**: Update button once, changes reflect everywhere it's used
-5. **Scalability**: Independent management of buttons and sets enables growth
-6. **Efficiency**: Bulk operations reduce API calls and improve performance
-
----
-
-## Migration Notes
-
-If migrating from the old architecture (where buttonSetId was required):
-
-1. **Database Migration**:
-
-   - Remove `buttonSetId` field from all radio buttons
-   - Add `buttons` array to all button sets
-   - Migrate existing button-to-set relationships to new structure
-
-2. **API Updates**:
-
-   - Update all API calls to remove `buttonSetId` from button creation
-   - Use new endpoints for managing button-set associations
-   - Update bulk create requests to remove `buttonSetId`
-
-3. **Frontend Updates**:
-   - Fetch button sets using GET `/button-sets/:id` (auto-populates buttons)
-   - Remove button set filtering from button queries
-   - Update forms to use populated button arrays from button sets
-
----
-
-## Files Modified
-
-1. **Models**:
-
-   - `models/RadioButton.js` - Removed `buttonSetId` field, made `name` globally unique
-   - `models/ButtonSet.js` - Added `buttons` array field
-
-2. **Controllers**:
-
-   - `controllers/radioButtonController.js` - Removed `buttonSetId` logic, added cleanup on delete
-   - `controllers/buttonSetController.js` - Added `addButtonsToSet` and `removeButtonsFromSet` methods
-
-3. **Routes**:
-
-   - `routes/radioButtonRoutes.js` - Removed `getByButtonSet` route, added button association routes
-
-4. **Documentation**:
-   - `documentation/RADIO_BUTTONS_DOCUMENTATION.md` - Complete rewrite for v2.0
-
----
-
-**Last Updated**: December 19, 2025  
-**Version**: 2.0.0 (Many-to-Many Architecture)  
-**Breaking Changes**: Yes (from v1.0)
+**Last Updated**: December 2024
+**Version**: 2.1.0 (With Restore Operations)
+**Maintained By**: Walkout Backend Team

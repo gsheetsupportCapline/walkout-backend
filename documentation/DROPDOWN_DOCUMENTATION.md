@@ -1,4 +1,4 @@
-# Dropdown Sets System - Complete Documentation
+# Dropdown Sets - Complete Documentation
 
 ## Table of Contents
 
@@ -8,34 +8,32 @@
 4. [API Endpoints](#api-endpoints)
 5. [Use Cases and Examples](#use-cases-and-examples)
 6. [Frontend Integration](#frontend-integration)
-7. [Database Maintenance](#database-maintenance)
-8. [Security and Permissions](#security-and-permissions)
-9. [Best Practices](#best-practices)
+7. [Best Practices](#best-practices)
 
 ---
 
 ## Overview
 
-The Dropdown Sets system provides a flexible, reusable infrastructure for managing dropdown menus across the application. It implements a many-to-many relationship architecture where dropdown options are independent entities that can be associated with multiple dropdown sets.
+The Dropdown Sets system provides a flexible infrastructure for managing dropdown menus across the application. It implements an **embedded document architecture** where dropdown options are stored as subdocuments within their parent dropdown sets.
 
 ### Key Features
 
-- **Independent Dropdown Options**: Each option is a standalone entity with globally unique names
-- **Reusable Architecture**: Options can be included in multiple dropdown sets simultaneously
+- **Embedded Dropdown Options**: Options are stored as subdocuments within dropdown sets (no separate collection)
+- **Set-Based Organization**: All options belong to a specific dropdown set
 - **Role-Based Access Control**: Admin and SuperAdmin for mutations, all authenticated users for queries
-- **Bulk Operations**: Efficient batch creation, updates, and deletions
+- **Bulk Operations**: Efficient batch creation, updates, and deletions within a set
 - **Visibility Control**: Options can be hidden without deletion
-- **Association Management**: Add/remove options from sets dynamically
-- **Automatic Cleanup**: Deleting an option automatically removes it from all dropdown sets
+- **Name Uniqueness**: Option names must be unique within each set (can be reused across different sets)
 
 ### Design Philosophy
 
-The system separates the **content** (dropdown options) from the **organization** (dropdown sets), enabling:
+The system uses **embedded documents** for simplicity and atomic operations:
 
-- Option reusability across different contexts
-- Flexible categorization without data duplication
-- Easier maintenance and updates
-- Efficient data structure for frequently used options
+- Options are stored directly in the dropdown set document
+- No separate collection for dropdown options
+- All CRUD operations happen within the parent set context
+- Better performance for retrieving sets with their options
+- Automatic cleanup when deleting a set (all options deleted together)
 
 ---
 
@@ -44,97 +42,48 @@ The system separates the **content** (dropdown options) from the **organization*
 ### Entity Relationship
 
 ```
-┌─────────────────────┐         ┌──────────────────────┐
-│  DropdownOption     │         │   DropdownSet        │
-├─────────────────────┤         ├──────────────────────┤
-│ _id                 │◄────────│ options: [ObjectId]  │
-│ name (unique)       │  Many   │ name (unique)        │
-│ visibility          │    to   │ description          │
-│ isActive            │  Many   │ isActive             │
-│ createdBy           │         │ createdBy            │
-│ updatedBy           │         │ updatedBy            │
-└─────────────────────┘         └──────────────────────┘
+┌──────────────────────────────────┐
+│     DropdownSet Collection       │
+├──────────────────────────────────┤
+│ _id                              │
+│ name (unique globally)           │
+│ description                      │
+│ isActive                         │
+│ createdBy                        │
+│ updatedBy                        │
+│ options: [                       │
+│   {                              │
+│     _id (auto-generated)         │
+│     name (unique within set)     │
+│     visibility                   │
+│     isActive                     │
+│     createdAt                    │
+│     updatedAt                    │
+│   }                              │
+│ ]                                │
+└──────────────────────────────────┘
 ```
 
 ### Key Architectural Decisions
 
-1. **No Foreign Key in DropdownOption**:
-   - Options are globally available, not bound to any specific set
-   - Allows maximum flexibility for option reuse
-2. **Array of IDs in DropdownSet**:
-   - DropdownSet maintains an array of DropdownOption IDs
-   - Enables dynamic association/disassociation
-3. **Automatic Cleanup**:
-
-   - Deleting an option triggers removal from all dropdown sets
-   - Maintains data integrity without manual intervention
-
-4. **Visibility vs. Deletion**:
-   - `visibility` flag for soft hiding (option remains in database)
-   - `isActive` flag for status management
-   - Actual deletion removes the option completely
+1. **Embedded Subdocuments**:
+   - Dropdown options are embedded within dropdown sets
+   - No separate collection needed
+   - Mongoose automatically generates `_id` for each option subdocument
+2. **Set-Scoped Uniqueness**:
+   - Option names must be unique within each set
+   - Same option name can exist in different sets
+   - Example: "Primary Care" option can exist in multiple sets
+3. **Atomic Operations**:
+   - Creating/updating/deleting options modifies the parent set document
+   - MongoDB guarantees atomicity at document level
+4. **Automatic Cleanup**:
+   - Deleting a dropdown set deletes all its options automatically
+   - No orphaned option documents
 
 ---
 
 ## Database Schema
-
-### DropdownOption Model
-
-**Collection**: `dropdown-options`
-
-```javascript
-{
-  _id: ObjectId,
-  name: {
-    type: String,
-    required: true,
-    unique: true,  // Globally unique across all dropdown options
-    trim: true
-  },
-  visibility: {
-    type: Boolean,
-    default: true  // true = visible, false = hidden
-  },
-  isActive: {
-    type: Boolean,
-    default: true  // Status flag for option availability
-  },
-  createdBy: {
-    type: ObjectId,
-    ref: "User",
-    required: true
-  },
-  updatedBy: {
-    type: ObjectId,
-    ref: "User"
-  },
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-**Indexes**:
-
-- `name`: 1 (unique index for fast lookups and constraint enforcement)
-- `isActive`: 1 (filter active/inactive options)
-- `visibility`: 1 (filter visible/hidden options)
-
-**Example Document**:
-
-```json
-{
-  "_id": "6578abc123def456789012",
-  "name": "Primary Care",
-  "visibility": true,
-  "isActive": true,
-  "createdBy": "6578abc123def456789001",
-  "updatedBy": "6578abc123def456789001",
-  "createdAt": "2024-01-15T10:30:00.000Z",
-  "updatedAt": "2024-01-15T10:30:00.000Z"
-}
-```
-
----
 
 ### DropdownSet Model
 
@@ -146,17 +95,43 @@ The system separates the **content** (dropdown options) from the **organization*
   name: {
     type: String,
     required: true,
-    unique: true,  // Globally unique set names
+    unique: true,  // Globally unique across all dropdown sets
     trim: true
   },
   description: {
     type: String,
     default: ""
   },
-  options: [{
-    type: ObjectId,
-    ref: "DropdownOption"  // Array of dropdown option references
-  }],
+  lastOptionId: {
+    type: Number,
+    default: 0,
+    // Counter for generating incremental IDs for options
+  },
+  options: [  // Embedded subdocuments
+    {
+      _id: ObjectId,  // Auto-generated by Mongoose
+      incrementalId: {
+        type: Number,
+        required: true,
+        // Unique within this set, never reused
+      },
+      name: {
+        type: String,
+        required: true,
+        trim: true  // Must be unique within this set (enforced in controller)
+      },
+      visibility: {
+        type: Boolean,
+        default: true
+      },
+      isActive: {
+        type: Boolean,
+        default: true
+      },
+      createdAt: Date,
+      updatedAt: Date
+    }
+  ],
   isActive: {
     type: Boolean,
     default: true
@@ -177,28 +152,256 @@ The system separates the **content** (dropdown options) from the **organization*
 
 **Indexes**:
 
-- `name`: 1 (unique index)
-- `isActive`: 1 (filter active/inactive sets)
+- `name`: 1 (unique, auto-created)
+- `isActive`: 1 (for filtering)
 
 **Example Document**:
 
 ```json
 {
-  "_id": "6578def123abc456789012",
+  "_id": "6578abc123def456789012",
   "name": "Department Dropdown",
-  "description": "List of hospital departments",
+  "description": "Hospital departments",
+  "lastOptionId": 3,
   "options": [
-    "6578abc123def456789012",
-    "6578abc123def456789013",
-    "6578abc123def456789014"
+    {
+      "_id": "6578abc123def456789013",
+      "incrementalId": 1,
+      "name": "Primary Care",
+      "visibility": true,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "_id": "6578abc123def456789014",
+      "incrementalId": 2,
+      "name": "Emergency Medicine",
+      "visibility": true,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:35:00.000Z",
+      "updatedAt": "2024-01-15T10:35:00.000Z"
+    },
+    {
+      "_id": "6578abc123def456789015",
+      "incrementalId": 3,
+      "name": "Cardiology",
+      "visibility": false,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:40:00.000Z",
+      "updatedAt": "2024-01-15T14:20:00.000Z"
+    }
   ],
   "isActive": true,
   "createdBy": "6578abc123def456789001",
   "updatedBy": "6578abc123def456789001",
-  "createdAt": "2024-01-15T11:00:00.000Z",
-  "updatedAt": "2024-01-15T14:30:00.000Z"
+  "createdAt": "2024-01-15T10:25:00.000Z",
+  "updatedAt": "2024-01-15T14:20:00.000Z"
 }
 ```
+
+---
+
+## Incremental ID System
+
+### Purpose
+
+Each dropdown option receives a unique **incremental ID** that is:
+
+- **Never reused**: Even if an option is deleted, its incremental ID is never assigned to a new option
+- **Sequential**: IDs increment from 1, 2, 3... within each dropdown set
+- **Stable**: Perfect for frontend mapping and tracking, unlike MongoDB's `_id` which changes on recreation
+
+### How It Works
+
+1. **DropdownSet Counter**: Each dropdown set maintains a `lastOptionId` counter (starts at 0)
+2. **Auto-Increment**: When creating an option, the counter increments: `lastOptionId += 1`
+3. **Assignment**: The new value becomes the option's `incrementalId`
+4. **Persistence**: The counter never decreases, even after deletions
+
+### Schema Fields
+
+```javascript
+DropdownSet: {
+  lastOptionId: {
+    type: Number,
+    default: 0,
+    // Counter for generating incremental IDs
+  }
+}
+
+DropdownOption (subdocument): {
+  incrementalId: {
+    type: Number,
+    required: true,
+    // Unique within the parent dropdown set
+  }
+}
+```
+
+### Example Flow
+
+```javascript
+// Initial state
+DropdownSet: { lastOptionId: 0, options: [] }
+
+// Create option "Primary Care"
+lastOptionId: 0 → 1
+Option: { incrementalId: 1, name: "Primary Care" }
+
+// Create option "Emergency"
+lastOptionId: 1 → 2
+Option: { incrementalId: 2, name: "Emergency" }
+
+// Create option "Cardiology"
+lastOptionId: 2 → 3
+Option: { incrementalId: 3, name: "Cardiology" }
+
+// Delete option "Emergency" (incrementalId: 2)
+lastOptionId: stays at 3 (never decreases)
+Options: [{ incrementalId: 1 }, { incrementalId: 3 }]
+
+// Create new option "Neurology"
+lastOptionId: 3 → 4
+Option: { incrementalId: 4, name: "Neurology" }
+// Note: incrementalId 2 is never reused!
+```
+
+### Benefits for Frontend
+
+```javascript
+// Frontend can safely map by incrementalId
+const optionMapping = {
+  1: "Primary Care",
+  3: "Cardiology",
+  4: "Neurology",
+  // ID 2 permanently retired
+};
+
+// When option name changes, incrementalId remains the same
+// Frontend updates automatically without remapping
+```
+
+---
+
+## Archive System
+
+### Purpose
+
+Instead of permanently deleting dropdown sets or options, the system **archives** them to:
+
+- **Preserve History**: Keep a record of all deleted items
+- **Audit Trail**: Track who deleted what and when
+- **Potential Recovery**: Ability to restore archived items (future feature)
+- **Compliance**: Meet data retention requirements
+
+### Archive Collection
+
+**Collection**: `archive-dropdowns`
+
+```javascript
+ArchiveDropdown: {
+  originalId: ObjectId,        // Original DropdownSet _id
+  name: String,
+  description: String,
+  lastOptionId: Number,
+  options: [                   // Archived option subdocuments
+    {
+      incrementalId: Number,
+      name: String,
+      visibility: Boolean,
+      isActive: Boolean,
+      originalId: ObjectId,    // Original option _id
+      createdAt: Date,
+      updatedAt: Date
+    }
+  ],
+  isActive: Boolean,
+  createdBy: ObjectId,
+  updatedBy: ObjectId,
+
+  // Deletion metadata
+  deletedBy: ObjectId,         // Who deleted it
+  deletedAt: Date,             // When it was deleted
+  deletionReason: String,      // Why it was deleted (optional)
+
+  // Original timestamps
+  originalCreatedAt: Date,
+  originalUpdatedAt: Date
+}
+```
+
+### How It Works
+
+#### Deleting a Dropdown Set
+
+1. **Archive Creation**: Copy entire dropdown set to archive collection with deletion metadata
+2. **Deletion**: Remove from main `dropdown-sets` collection
+3. **Result**: Users can't see it, but data is preserved in archive
+
+```javascript
+// Before deletion
+DropdownSet: { _id: "abc123", name: "Department Dropdown", options: [...] }
+
+// After deletion
+// Main collection: (deleted)
+// Archive collection:
+ArchiveDropdown: {
+  originalId: "abc123",
+  name: "Department Dropdown",
+  options: [...],
+  deletedBy: "user_id",
+  deletedAt: "2024-12-20T10:00:00Z",
+  deletionReason: "Manual deletion"
+}
+```
+
+#### Deleting Individual Option
+
+1. **Archive Creation**: Create archive entry with parent set info + only the deleted option
+2. **Deletion**: Remove option subdocument from dropdown set
+3. **Result**: Option archived, set remains active with other options
+
+```javascript
+// Deleting option "Emergency" from set "Department Dropdown"
+ArchiveDropdown: {
+  originalId: "set_abc123",           // Parent set ID
+  name: "Department Dropdown - Option: Emergency",
+  description: "Archived individual option from set: Department Dropdown",
+  options: [
+    {
+      incrementalId: 2,
+      name: "Emergency",
+      originalId: "option_xyz789"      // Original option _id
+    }
+  ],
+  deletedBy: "user_id",
+  deletedAt: "2024-12-20T10:00:00Z",
+  deletionReason: "Individual option deletion"
+}
+```
+
+### Deletion Reason (Optional)
+
+You can provide a deletion reason in the request body:
+
+```json
+DELETE /api/dropdowns/dropdown-sets/:id
+{
+  "deletionReason": "Department closed"
+}
+```
+
+If not provided, defaults to "Manual deletion".
+
+### Archive Queries (Future Feature)
+
+Archive collections are indexed for efficient querying:
+
+- By `originalId`: Find all archives for a specific set
+- By `deletedBy`: See what a user deleted
+- By `deletedAt`: Time-based queries
+- By `name`: Search archived items
 
 ---
 
@@ -234,7 +437,7 @@ All endpoints require JWT authentication via the `Authorization: Bearer <token>`
 ```json
 {
   "name": "Department Dropdown",
-  "description": "List of hospital departments",
+  "description": "Hospital departments",
   "isActive": true
 }
 ```
@@ -245,9 +448,9 @@ All endpoints require JWT authentication via the `Authorization: Bearer <token>`
 {
   "success": true,
   "data": {
-    "_id": "6578def123abc456789012",
+    "_id": "6578abc123def456789012",
     "name": "Department Dropdown",
-    "description": "List of hospital departments",
+    "description": "Hospital departments",
     "options": [],
     "isActive": true,
     "createdBy": {
@@ -255,8 +458,8 @@ All endpoints require JWT authentication via the `Authorization: Bearer <token>`
       "name": "Admin User",
       "email": "admin@example.com"
     },
-    "createdAt": "2024-01-15T11:00:00.000Z",
-    "updatedAt": "2024-01-15T11:00:00.000Z"
+    "createdAt": "2024-01-15T10:25:00.000Z",
+    "updatedAt": "2024-01-15T10:25:00.000Z"
   }
 }
 ```
@@ -264,9 +467,9 @@ All endpoints require JWT authentication via the `Authorization: Bearer <token>`
 **Error Responses**:
 
 - `400`: Missing required field (name)
-- `400`: Duplicate set name (code: 11000)
-- `401`: Unauthorized (no token)
-- `403`: Forbidden (insufficient permissions)
+- `400`: Duplicate set name
+- `401`: Unauthorized
+- `403`: Forbidden
 
 ---
 
@@ -275,8 +478,6 @@ All endpoints require JWT authentication via the `Authorization: Bearer <token>`
 **Endpoint**: `GET /api/dropdowns/dropdown-sets`
 
 **Access**: All authenticated users
-
-**Description**: Retrieves all dropdown sets with pagination and filtering.
 
 **Query Parameters**:
 
@@ -298,34 +499,30 @@ GET /api/dropdowns/dropdown-sets?isActive=true&limit=20&skip=0
   "count": 2,
   "data": [
     {
-      "_id": "6578def123abc456789012",
+      "_id": "6578abc123def456789012",
       "name": "Department Dropdown",
-      "description": "List of hospital departments",
-      "options": ["6578abc123def456789012", "6578abc123def456789013"],
+      "description": "Hospital departments",
+      "options": [
+        {
+          "_id": "6578abc123def456789013",
+          "name": "Primary Care",
+          "visibility": true,
+          "isActive": true
+        },
+        {
+          "_id": "6578abc123def456789014",
+          "name": "Emergency Medicine",
+          "visibility": true,
+          "isActive": true
+        }
+      ],
       "isActive": true,
       "createdBy": {
         "_id": "6578abc123def456789001",
         "name": "Admin User"
       },
-      "updatedBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
-      "createdAt": "2024-01-15T11:00:00.000Z",
-      "updatedAt": "2024-01-15T14:30:00.000Z"
-    },
-    {
-      "_id": "6578def123abc456789013",
-      "name": "Specialty Dropdown",
-      "description": "Medical specialties",
-      "options": ["6578abc123def456789015", "6578abc123def456789016"],
-      "isActive": true,
-      "createdBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
-      "createdAt": "2024-01-15T12:00:00.000Z",
-      "updatedAt": "2024-01-15T12:00:00.000Z"
+      "createdAt": "2024-01-15T10:25:00.000Z",
+      "updatedAt": "2024-01-15T14:20:00.000Z"
     }
   ]
 }
@@ -339,35 +536,23 @@ GET /api/dropdowns/dropdown-sets?isActive=true&limit=20&skip=0
 
 **Access**: All authenticated users
 
-**Description**: Retrieves a single dropdown set with fully populated option details.
-
-**Example Request**:
-
-```
-GET /api/dropdowns/dropdown-sets/6578def123abc456789012
-```
-
 **Response** (200):
 
 ```json
 {
   "success": true,
   "data": {
-    "_id": "6578def123abc456789012",
+    "_id": "6578abc123def456789012",
     "name": "Department Dropdown",
-    "description": "List of hospital departments",
+    "description": "Hospital departments",
     "options": [
       {
-        "_id": "6578abc123def456789012",
+        "_id": "6578abc123def456789013",
         "name": "Primary Care",
         "visibility": true,
-        "isActive": true
-      },
-      {
-        "_id": "6578abc123def456789013",
-        "name": "Emergency Medicine",
-        "visibility": true,
-        "isActive": true
+        "isActive": true,
+        "createdAt": "2024-01-15T10:30:00.000Z",
+        "updatedAt": "2024-01-15T10:30:00.000Z"
       }
     ],
     "isActive": true,
@@ -376,20 +561,11 @@ GET /api/dropdowns/dropdown-sets/6578def123abc456789012
       "name": "Admin User",
       "email": "admin@example.com"
     },
-    "updatedBy": {
-      "_id": "6578abc123def456789001",
-      "name": "Admin User",
-      "email": "admin@example.com"
-    },
-    "createdAt": "2024-01-15T11:00:00.000Z",
-    "updatedAt": "2024-01-15T14:30:00.000Z"
+    "createdAt": "2024-01-15T10:25:00.000Z",
+    "updatedAt": "2024-01-15T14:20:00.000Z"
   }
 }
 ```
-
-**Error Responses**:
-
-- `404`: Dropdown set not found
 
 ---
 
@@ -399,13 +575,13 @@ GET /api/dropdowns/dropdown-sets/6578def123abc456789012
 
 **Access**: Admin, SuperAdmin
 
-**Description**: Updates dropdown set properties (name, description, isActive). Does not modify options array - use add/remove endpoints for that.
+**Description**: Updates dropdown set properties (name, description, isActive). Does not modify options - use option-specific endpoints for that.
 
 **Request Body** (all fields optional):
 
 ```json
 {
-  "name": "Updated Department Dropdown",
+  "name": "Department Dropdown Updated",
   "description": "Updated description",
   "isActive": false
 }
@@ -417,29 +593,19 @@ GET /api/dropdowns/dropdown-sets/6578def123abc456789012
 {
   "success": true,
   "data": {
-    "_id": "6578def123abc456789012",
-    "name": "Updated Department Dropdown",
+    "_id": "6578abc123def456789012",
+    "name": "Department Dropdown Updated",
     "description": "Updated description",
-    "options": ["6578abc123def456789012", "6578abc123def456789013"],
+    "options": [...],
     "isActive": false,
-    "createdBy": {
-      "_id": "6578abc123def456789001",
-      "name": "Admin User"
-    },
     "updatedBy": {
       "_id": "6578abc123def456789002",
       "name": "SuperAdmin User"
     },
-    "createdAt": "2024-01-15T11:00:00.000Z",
     "updatedAt": "2024-01-15T15:45:00.000Z"
   }
 }
 ```
-
-**Error Responses**:
-
-- `404`: Dropdown set not found
-- `400`: Duplicate name (if updating to existing name)
 
 ---
 
@@ -449,13 +615,7 @@ GET /api/dropdowns/dropdown-sets/6578def123abc456789012
 
 **Access**: Admin, SuperAdmin
 
-**Description**: Permanently deletes a dropdown set. Options are NOT deleted and remain available for other sets.
-
-**Example Request**:
-
-```
-DELETE /api/dropdowns/dropdown-sets/6578def123abc456789012
-```
+**Description**: Permanently deletes a dropdown set and all its embedded options.
 
 **Response** (200):
 
@@ -466,157 +626,23 @@ DELETE /api/dropdowns/dropdown-sets/6578def123abc456789012
 }
 ```
 
-**Error Responses**:
-
-- `404`: Dropdown set not found
-
 ---
 
-### 1.6 Add Options to Dropdown Set
-
-**Endpoint**: `POST /api/dropdowns/dropdown-sets/:id/options`
-
-**Access**: Admin, SuperAdmin
-
-**Description**: Associates one or more dropdown options with a dropdown set. Validates option existence and prevents duplicates.
-
-**Request Body**:
-
-```json
-{
-  "optionIds": [
-    "6578abc123def456789012",
-    "6578abc123def456789013",
-    "6578abc123def456789014"
-  ]
-}
-```
-
-**Response** (200):
-
-```json
-{
-  "success": true,
-  "data": {
-    "_id": "6578def123abc456789012",
-    "name": "Department Dropdown",
-    "description": "List of hospital departments",
-    "options": [
-      {
-        "_id": "6578abc123def456789012",
-        "name": "Primary Care",
-        "visibility": true,
-        "isActive": true
-      },
-      {
-        "_id": "6578abc123def456789013",
-        "name": "Emergency Medicine",
-        "visibility": true,
-        "isActive": true
-      },
-      {
-        "_id": "6578abc123def456789014",
-        "name": "Cardiology",
-        "visibility": true,
-        "isActive": true
-      }
-    ],
-    "isActive": true,
-    "updatedBy": {
-      "_id": "6578abc123def456789001",
-      "name": "Admin User"
-    },
-    "updatedAt": "2024-01-15T16:00:00.000Z"
-  }
-}
-```
-
-**Behavior**:
-
-- Validates all option IDs exist before adding any
-- Skips option IDs already in the set (no duplicates)
-- Only adds new, valid option IDs
-- Returns fully populated result
-
-**Error Responses**:
-
-- `400`: Missing or empty optionIds array
-- `400`: Invalid option IDs (some don't exist)
-- `404`: Dropdown set not found
-
----
-
-### 1.7 Remove Options from Dropdown Set
-
-**Endpoint**: `DELETE /api/dropdowns/dropdown-sets/:id/options`
-
-**Access**: Admin, SuperAdmin
-
-**Description**: Removes specified dropdown options from a dropdown set. Does NOT delete the options themselves.
-
-**Request Body**:
-
-```json
-{
-  "optionIds": ["6578abc123def456789014"]
-}
-```
-
-**Response** (200):
-
-```json
-{
-  "success": true,
-  "data": {
-    "_id": "6578def123abc456789012",
-    "name": "Department Dropdown",
-    "description": "List of hospital departments",
-    "options": [
-      {
-        "_id": "6578abc123def456789012",
-        "name": "Primary Care",
-        "visibility": true,
-        "isActive": true
-      },
-      {
-        "_id": "6578abc123def456789013",
-        "name": "Emergency Medicine",
-        "visibility": true,
-        "isActive": true
-      }
-    ],
-    "isActive": true,
-    "updatedBy": {
-      "_id": "6578abc123def456789001",
-      "name": "Admin User"
-    },
-    "updatedAt": "2024-01-15T16:15:00.000Z"
-  }
-}
-```
-
-**Error Responses**:
-
-- `400`: Missing or empty optionIds array
-- `404`: Dropdown set not found
-
----
-
-## 2. Dropdown Option Endpoints
+## 2. Dropdown Option Endpoints (Embedded)
 
 ### 2.1 Create Dropdown Option
 
-**Endpoint**: `POST /api/dropdowns`
+**Endpoint**: `POST /api/dropdowns/dropdown-sets/:dropdownSetId/options`
 
 **Access**: Admin, SuperAdmin
 
-**Description**: Creates a new standalone dropdown option with a globally unique name.
+**Description**: Creates a new dropdown option within a specific dropdown set.
 
 **Request Body**:
 
 ```json
 {
-  "name": "Primary Care",
+  "name": "Cardiology",
   "visibility": true,
   "isActive": true
 }
@@ -629,46 +655,49 @@ DELETE /api/dropdowns/dropdown-sets/6578def123abc456789012
   "success": true,
   "data": {
     "_id": "6578abc123def456789012",
-    "name": "Primary Care",
-    "visibility": true,
-    "isActive": true,
-    "createdBy": {
+    "name": "Department Dropdown",
+    "options": [
+      {
+        "_id": "6578abc123def456789015",
+        "name": "Cardiology",
+        "visibility": true,
+        "isActive": true,
+        "createdAt": "2024-01-15T16:00:00.000Z",
+        "updatedAt": "2024-01-15T16:00:00.000Z"
+      }
+    ],
+    "updatedBy": {
       "_id": "6578abc123def456789001",
-      "name": "Admin User",
-      "email": "admin@example.com"
+      "name": "Admin User"
     },
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T10:30:00.000Z"
+    "updatedAt": "2024-01-15T16:00:00.000Z"
   }
 }
 ```
 
 **Error Responses**:
 
-- `400`: Missing required field (name)
-- `400`: Duplicate option name (code: 11000)
+- `400`: Missing option name
+- `400`: Duplicate option name within the set
+- `404`: Dropdown set not found
 
 ---
 
-### 2.2 Get All Dropdown Options
+### 2.2 Get All Options in Set
 
-**Endpoint**: `GET /api/dropdowns`
+**Endpoint**: `GET /api/dropdowns/dropdown-sets/:dropdownSetId/options`
 
 **Access**: All authenticated users
 
-**Description**: Retrieves all dropdown options with filtering and pagination.
-
 **Query Parameters**:
 
-- `isActive` (optional): Filter by active status (true/false)
-- `visibility` (optional): Filter by visibility (true/false)
-- `limit` (optional): Number of results per page (default: 50)
-- `skip` (optional): Number of results to skip (default: 0)
+- `isActive` (optional): Filter by active status
+- `visibility` (optional): Filter by visibility
 
 **Example Request**:
 
 ```
-GET /api/dropdowns?isActive=true&visibility=true&limit=100
+GET /api/dropdowns/dropdown-sets/6578abc123def456789012/options?isActive=true&visibility=true
 ```
 
 **Response** (200):
@@ -679,30 +708,18 @@ GET /api/dropdowns?isActive=true&visibility=true&limit=100
   "count": 3,
   "data": [
     {
-      "_id": "6578abc123def456789012",
+      "_id": "6578abc123def456789013",
       "name": "Primary Care",
       "visibility": true,
       "isActive": true,
-      "createdBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
-      "updatedBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
       "createdAt": "2024-01-15T10:30:00.000Z",
       "updatedAt": "2024-01-15T10:30:00.000Z"
     },
     {
-      "_id": "6578abc123def456789013",
+      "_id": "6578abc123def456789014",
       "name": "Emergency Medicine",
       "visibility": true,
       "isActive": true,
-      "createdBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
       "createdAt": "2024-01-15T10:35:00.000Z",
       "updatedAt": "2024-01-15T10:35:00.000Z"
     }
@@ -712,19 +729,11 @@ GET /api/dropdowns?isActive=true&visibility=true&limit=100
 
 ---
 
-### 2.3 Get Dropdown Option by ID
+### 2.3 Get Option by ID
 
-**Endpoint**: `GET /api/dropdowns/:id`
+**Endpoint**: `GET /api/dropdowns/dropdown-sets/:dropdownSetId/options/:optionId`
 
 **Access**: All authenticated users
-
-**Description**: Retrieves a single dropdown option with full details.
-
-**Example Request**:
-
-```
-GET /api/dropdowns/6578abc123def456789012
-```
 
 **Response** (200):
 
@@ -732,39 +741,23 @@ GET /api/dropdowns/6578abc123def456789012
 {
   "success": true,
   "data": {
-    "_id": "6578abc123def456789012",
+    "_id": "6578abc123def456789013",
     "name": "Primary Care",
     "visibility": true,
     "isActive": true,
-    "createdBy": {
-      "_id": "6578abc123def456789001",
-      "name": "Admin User",
-      "email": "admin@example.com"
-    },
-    "updatedBy": {
-      "_id": "6578abc123def456789001",
-      "name": "Admin User",
-      "email": "admin@example.com"
-    },
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z"
   }
 }
 ```
 
-**Error Responses**:
-
-- `404`: Dropdown option not found
-
 ---
 
 ### 2.4 Update Dropdown Option
 
-**Endpoint**: `PUT /api/dropdowns/:id`
+**Endpoint**: `PUT /api/dropdowns/dropdown-sets/:dropdownSetId/options/:optionId`
 
 **Access**: Admin, SuperAdmin
-
-**Description**: Updates dropdown option properties. Changes apply across all dropdown sets using this option.
 
 **Request Body** (all fields optional):
 
@@ -783,75 +776,50 @@ GET /api/dropdowns/6578abc123def456789012
   "success": true,
   "data": {
     "_id": "6578abc123def456789012",
-    "name": "Primary Care Department",
-    "visibility": false,
-    "isActive": true,
-    "createdBy": {
+    "name": "Department Dropdown",
+    "options": [
+      {
+        "_id": "6578abc123def456789013",
+        "name": "Primary Care Department",
+        "visibility": false,
+        "isActive": true,
+        "updatedAt": "2024-01-15T17:00:00.000Z"
+      }
+    ],
+    "updatedBy": {
       "_id": "6578abc123def456789001",
       "name": "Admin User"
-    },
-    "updatedBy": {
-      "_id": "6578abc123def456789002",
-      "name": "SuperAdmin User"
-    },
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T16:45:00.000Z"
+    }
   }
 }
 ```
-
-**Error Responses**:
-
-- `404`: Dropdown option not found
-- `400`: Duplicate name (if updating to existing name)
 
 ---
 
 ### 2.5 Delete Dropdown Option
 
-**Endpoint**: `DELETE /api/dropdowns/:id`
+**Endpoint**: `DELETE /api/dropdowns/dropdown-sets/:dropdownSetId/options/:optionId`
 
 **Access**: Admin, SuperAdmin
-
-**Description**: Permanently deletes a dropdown option and automatically removes it from all dropdown sets.
-
-**Example Request**:
-
-```
-DELETE /api/dropdowns/6578abc123def456789012
-```
 
 **Response** (200):
 
 ```json
 {
   "success": true,
-  "message": "Dropdown option deleted successfully and removed from all dropdown sets"
+  "message": "Option deleted successfully"
 }
 ```
-
-**Automatic Cleanup Process**:
-
-1. Finds all dropdown sets containing this option
-2. Removes the option ID from all sets' options arrays
-3. Deletes the dropdown option document
-4. Returns success message
-
-**Error Responses**:
-
-- `404`: Dropdown option not found
 
 ---
 
 ## 3. Bulk Operations
 
-### 3.1 Bulk Create Dropdown Options
+### 3.1 Bulk Create Options
 
-**Endpoint**: `POST /api/dropdowns/bulk`
+**Endpoint**: `POST /api/dropdowns/dropdown-sets/:dropdownSetId/options/bulk`
 
 **Access**: Admin, SuperAdmin
-
-**Description**: Creates multiple dropdown options in a single request. Supports partial success - returns both successful creations and errors.
 
 **Request Body**:
 
@@ -884,95 +852,62 @@ DELETE /api/dropdowns/6578abc123def456789012
   "success": true,
   "created": 3,
   "failed": 0,
-  "data": [
-    {
-      "_id": "6578abc123def456789015",
-      "name": "Cardiology",
-      "visibility": true,
-      "isActive": true,
-      "createdBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
+  "data": {
+    "_id": "6578abc123def456789012",
+    "name": "Department Dropdown",
+    "options": [
+      {
+        "_id": "6578abc123def456789013",
+        "name": "Cardiology",
+        "visibility": true,
+        "isActive": true
       },
-      "createdAt": "2024-01-15T17:00:00.000Z",
-      "updatedAt": "2024-01-15T17:00:00.000Z"
-    },
-    {
-      "_id": "6578abc123def456789016",
-      "name": "Neurology",
-      "visibility": true,
-      "isActive": true,
-      "createdBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
+      {
+        "_id": "6578abc123def456789014",
+        "name": "Neurology",
+        "visibility": true,
+        "isActive": true
       },
-      "createdAt": "2024-01-15T17:00:01.000Z",
-      "updatedAt": "2024-01-15T17:00:01.000Z"
-    },
-    {
-      "_id": "6578abc123def456789017",
-      "name": "Orthopedics",
-      "visibility": true,
-      "isActive": true,
-      "createdBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
-      "createdAt": "2024-01-15T17:00:02.000Z",
-      "updatedAt": "2024-01-15T17:00:02.000Z"
-    }
-  ],
+      {
+        "_id": "6578abc123def456789015",
+        "name": "Orthopedics",
+        "visibility": true,
+        "isActive": true
+      }
+    ]
+  },
   "errors": []
 }
 ```
 
 **Partial Success Example**:
-If one option has a duplicate name:
 
 ```json
 {
   "success": true,
   "created": 2,
   "failed": 1,
-  "data": [
-    {
-      "_id": "6578abc123def456789015",
-      "name": "Cardiology",
-      ...
-    },
-    {
-      "_id": "6578abc123def456789017",
-      "name": "Orthopedics",
-      ...
-    }
-  ],
+  "data": {...},
   "errors": [
     {
       "option": {
-        "name": "Neurology",
+        "name": "Cardiology",
         "visibility": true,
         "isActive": true
       },
-      "error": "Duplicate option name: Neurology"
+      "error": "Option with name 'Cardiology' already exists in this set"
     }
   ]
 }
 ```
 
-**Error Responses**:
-
-- `400`: Missing or empty options array
-- `400`: Options is not an array
-
 ---
 
-### 3.2 Bulk Update Dropdown Options
+### 3.2 Bulk Update Options
 
-**Endpoint**: `PUT /api/dropdowns/bulk`
+**Endpoint**: `PUT /api/dropdowns/dropdown-sets/:dropdownSetId/options/bulk`
 
 **Access**: Admin, SuperAdmin
-
-**Description**: Updates multiple dropdown options in a single request. Each update requires the option ID.
 
 **Request Body**:
 
@@ -980,123 +915,47 @@ If one option has a duplicate name:
 {
   "updates": [
     {
-      "id": "6578abc123def456789015",
+      "id": "6578abc123def456789013",
       "name": "Cardiology Department",
       "visibility": true
     },
     {
-      "id": "6578abc123def456789016",
+      "id": "6578abc123def456789014",
       "isActive": false
-    },
-    {
-      "id": "6578abc123def456789017",
-      "name": "Orthopedics & Sports Medicine",
-      "visibility": false
     }
   ]
 }
 ```
 
 **Response** (200):
-
-```json
-{
-  "success": true,
-  "updated": 3,
-  "failed": 0,
-  "data": [
-    {
-      "_id": "6578abc123def456789015",
-      "name": "Cardiology Department",
-      "visibility": true,
-      "isActive": true,
-      "updatedBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
-      "updatedAt": "2024-01-15T17:30:00.000Z"
-    },
-    {
-      "_id": "6578abc123def456789016",
-      "name": "Neurology",
-      "visibility": true,
-      "isActive": false,
-      "updatedBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
-      "updatedAt": "2024-01-15T17:30:01.000Z"
-    },
-    {
-      "_id": "6578abc123def456789017",
-      "name": "Orthopedics & Sports Medicine",
-      "visibility": false,
-      "isActive": true,
-      "updatedBy": {
-        "_id": "6578abc123def456789001",
-        "name": "Admin User"
-      },
-      "updatedAt": "2024-01-15T17:30:02.000Z"
-    }
-  ],
-  "errors": []
-}
-```
-
-**Partial Success Example**:
-If one option ID doesn't exist:
 
 ```json
 {
   "success": true,
   "updated": 2,
-  "failed": 1,
-  "data": [
-    {
-      "_id": "6578abc123def456789015",
-      "name": "Cardiology Department",
-      ...
-    },
-    {
-      "_id": "6578abc123def456789017",
-      "name": "Orthopedics & Sports Medicine",
-      ...
-    }
-  ],
-  "errors": [
-    {
-      "id": "6578abc123def456789016",
-      "error": "Dropdown option not found"
-    }
-  ]
+  "failed": 0,
+  "data": {
+    "_id": "6578abc123def456789012",
+    "name": "Department Dropdown",
+    "options": [...]
+  },
+  "errors": []
 }
 ```
 
-**Error Responses**:
-
-- `400`: Missing or empty updates array
-- `400`: Updates is not an array
-- `400`: Update object missing id field
-
 ---
 
-### 3.3 Bulk Delete Dropdown Options
+### 3.3 Bulk Delete Options
 
-**Endpoint**: `DELETE /api/dropdowns/bulk`
+**Endpoint**: `DELETE /api/dropdowns/dropdown-sets/:dropdownSetId/options/bulk`
 
 **Access**: Admin, SuperAdmin
-
-**Description**: Deletes multiple dropdown options in a single request. Automatically removes deleted options from all dropdown sets.
 
 **Request Body**:
 
 ```json
 {
-  "ids": [
-    "6578abc123def456789015",
-    "6578abc123def456789016",
-    "6578abc123def456789017"
-  ]
+  "ids": ["6578abc123def456789013", "6578abc123def456789014"]
 }
 ```
 
@@ -1105,295 +964,83 @@ If one option ID doesn't exist:
 ```json
 {
   "success": true,
-  "deleted": 3,
+  "deleted": 2,
   "failed": 0,
-  "message": "3 dropdown options deleted successfully and removed from all dropdown sets",
+  "message": "2 options deleted successfully",
   "errors": []
 }
 ```
-
-**Partial Success Example**:
-If one option ID doesn't exist:
-
-```json
-{
-  "success": true,
-  "deleted": 2,
-  "failed": 1,
-  "message": "2 dropdown options deleted successfully and removed from all dropdown sets",
-  "errors": [
-    {
-      "id": "6578abc123def456789016",
-      "error": "Dropdown option not found"
-    }
-  ]
-}
-```
-
-**Automatic Cleanup Process**:
-
-1. For each valid option ID:
-   - Removes the option from all dropdown sets' options arrays
-   - Deletes the dropdown option document
-2. Returns count of successful deletions and any errors
-
-**Error Responses**:
-
-- `400`: Missing or empty ids array
-- `400`: ids is not an array
 
 ---
 
 ## Use Cases and Examples
 
-### Use Case 1: Creating Department Dropdowns
+### Use Case 1: Creating a Department Dropdown
 
-**Scenario**: Admin wants to create a department dropdown for patient appointment forms.
-
-**Step 1**: Create the dropdown options
+**Step 1**: Create the dropdown set
 
 ```bash
-POST /api/dropdowns/bulk
-Content-Type: application/json
-Authorization: Bearer <admin_token>
+POST /api/dropdowns/dropdown-sets
+{
+  "name": "Department Dropdown",
+  "description": "Hospital departments"
+}
+```
 
+**Step 2**: Add options to the set (bulk create)
+
+```bash
+POST /api/dropdowns/dropdown-sets/:dropdownSetId/options/bulk
 {
   "options": [
     {"name": "Primary Care", "visibility": true, "isActive": true},
     {"name": "Emergency Medicine", "visibility": true, "isActive": true},
     {"name": "Cardiology", "visibility": true, "isActive": true},
-    {"name": "Neurology", "visibility": true, "isActive": true},
-    {"name": "Orthopedics", "visibility": true, "isActive": true}
+    {"name": "Neurology", "visibility": true, "isActive": true}
   ]
 }
 ```
 
-**Step 2**: Create the dropdown set
-
-```bash
-POST /api/dropdowns/dropdown-sets
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "name": "Patient Department Dropdown",
-  "description": "Available departments for patient appointments",
-  "isActive": true
-}
-```
-
-**Step 3**: Associate options with the set
-
-```bash
-POST /api/dropdowns/dropdown-sets/<set_id>/options
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "optionIds": [
-    "6578abc123def456789012",
-    "6578abc123def456789013",
-    "6578abc123def456789015",
-    "6578abc123def456789016",
-    "6578abc123def456789017"
-  ]
-}
-```
+**Result**: Dropdown set created with 4 options embedded
 
 ---
 
-### Use Case 2: Reusing Options Across Multiple Sets
+### Use Case 2: Temporarily Hiding an Option
 
-**Scenario**: Same department options need to appear in both "Patient Appointment" and "Staff Assignment" dropdowns.
-
-**Step 1**: Get all department options
+**Scenario**: "Emergency Medicine" department is temporarily closed.
 
 ```bash
-GET /api/dropdowns?isActive=true
-Authorization: Bearer <token>
-```
-
-**Step 2**: Create first dropdown set (Patient Appointments)
-
-```bash
-POST /api/dropdowns/dropdown-sets
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "name": "Patient Department Dropdown",
-  "description": "Departments for patient appointments"
-}
-```
-
-**Step 3**: Create second dropdown set (Staff Assignments)
-
-```bash
-POST /api/dropdowns/dropdown-sets
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "name": "Staff Department Dropdown",
-  "description": "Departments for staff assignments"
-}
-```
-
-**Step 4**: Add the same options to both sets
-
-```bash
-POST /api/dropdowns/dropdown-sets/<patient_set_id>/options
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "optionIds": ["6578abc123def456789012", "6578abc123def456789013", ...]
-}
-
-POST /api/dropdowns/dropdown-sets/<staff_set_id>/options
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "optionIds": ["6578abc123def456789012", "6578abc123def456789013", ...]
-}
-```
-
-**Result**: Options are reused without duplication. Updating an option updates it in all dropdown sets.
-
----
-
-### Use Case 3: Temporarily Hiding an Option
-
-**Scenario**: "Emergency Medicine" department is temporarily closed for renovations. Don't want to delete the option as it will be reopened.
-
-**Solution**: Update visibility flag
-
-```bash
-PUT /api/dropdowns/<option_id>
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
+PUT /api/dropdowns/dropdown-sets/:dropdownSetId/options/:optionId
 {
   "visibility": false
 }
 ```
 
-**Result**:
-
-- Option remains in database and in all dropdown sets
-- Frontend can filter options by `visibility: true` to hide it from users
-- Easy to restore by setting `visibility: true`
-- Historical data remains intact
+**Result**: Option remains in the set but hidden from users when filtering by `visibility: true`
 
 ---
 
-### Use Case 4: Deactivating vs. Deleting Options
+### Use Case 3: Reusing Option Names Across Different Sets
 
-**Scenario**: Admin wants to phase out an old department name.
-
-**Option A - Deactivate** (soft delete):
+**Scenario**: Need "Active/Inactive" options in multiple dropdowns.
 
 ```bash
-PUT /api/dropdowns/<option_id>
-Content-Type: application/json
-Authorization: Bearer <admin_token>
+# Set 1: Patient Status
+POST /api/dropdowns/dropdown-sets
+{"name": "Patient Status"}
 
-{
-  "isActive": false
-}
+POST /api/dropdowns/dropdown-sets/:setId1/options/bulk
+{"options": [{"name": "Active"}, {"name": "Inactive"}]}
+
+# Set 2: Treatment Status
+POST /api/dropdowns/dropdown-sets
+{"name": "Treatment Status"}
+
+POST /api/dropdowns/dropdown-sets/:setId2/options/bulk
+{"options": [{"name": "Active"}, {"name": "Inactive"}]}
 ```
 
-**Benefits**:
-
-- Option stays in database
-- Historical records intact
-- Can be reactivated later
-- Remains in dropdown sets
-
-**Option B - Delete** (hard delete):
-
-```bash
-DELETE /api/dropdowns/<option_id>
-Authorization: Bearer <admin_token>
-```
-
-**Benefits**:
-
-- Completely removes option
-- Automatic cleanup from all dropdown sets
-- Cleaner database
-- Use when option will never be used again
-
----
-
-### Use Case 5: Adding New Options to Existing Set
-
-**Scenario**: Hospital adds two new departments to existing dropdown.
-
-**Step 1**: Create the new options
-
-```bash
-POST /api/dropdowns/bulk
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "options": [
-    {"name": "Psychiatry", "visibility": true, "isActive": true},
-    {"name": "Dermatology", "visibility": true, "isActive": true}
-  ]
-}
-```
-
-**Step 2**: Add to existing dropdown set
-
-```bash
-POST /api/dropdowns/dropdown-sets/<set_id>/options
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "optionIds": [
-    "6578abc123def456789018",
-    "6578abc123def456789019"
-  ]
-}
-```
-
-**Result**: New options immediately available in the dropdown.
-
----
-
-### Use Case 6: Reorganizing Options Between Sets
-
-**Scenario**: Admin wants to move "Pediatrics" from "General Departments" to "Specialized Departments" dropdown.
-
-**Step 1**: Add to new set
-
-```bash
-POST /api/dropdowns/dropdown-sets/<specialized_set_id>/options
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "optionIds": ["6578abc123def456789020"]
-}
-```
-
-**Step 2**: Remove from old set
-
-```bash
-DELETE /api/dropdowns/dropdown-sets/<general_set_id>/options
-Content-Type: application/json
-Authorization: Bearer <admin_token>
-
-{
-  "optionIds": ["6578abc123def456789020"]
-}
-```
-
-**Result**: Option moved between sets without duplication or deletion.
+**Result**: "Active" and "Inactive" options exist in both sets independently
 
 ---
 
@@ -1405,11 +1052,10 @@ Authorization: Bearer <admin_token>
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const DepartmentDropdown = ({ dropdownSetId }) => {
+const DropdownSet = ({ dropdownSetId }) => {
   const [dropdownSet, setDropdownSet] = useState(null);
   const [selectedOption, setSelectedOption] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchDropdownSet = async () => {
@@ -1424,8 +1070,8 @@ const DepartmentDropdown = ({ dropdownSetId }) => {
 
         setDropdownSet(response.data.data);
         setLoading(false);
-      } catch (err) {
-        setError(err.response?.data?.message || "Failed to load dropdown");
+      } catch (error) {
+        console.error("Failed to load dropdown set:", error);
         setLoading(false);
       }
     };
@@ -1433,690 +1079,264 @@ const DepartmentDropdown = ({ dropdownSetId }) => {
     fetchDropdownSet();
   }, [dropdownSetId]);
 
-  if (loading) return <div>Loading dropdown...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) return <div>Loading...</div>;
   if (!dropdownSet) return null;
 
   // Filter visible and active options
   const visibleOptions = dropdownSet.options.filter(
-    (option) => option.visibility && option.isActive
+    (opt) => opt.visibility && opt.isActive
   );
 
   return (
     <div className="dropdown-container">
-      <label htmlFor="department-select">{dropdownSet.name}</label>
+      <label htmlFor="dropdown-select">{dropdownSet.name}</label>
+      {dropdownSet.description && <p>{dropdownSet.description}</p>}
 
       <select
-        id="department-select"
+        id="dropdown-select"
         value={selectedOption}
         onChange={(e) => setSelectedOption(e.target.value)}
         disabled={!dropdownSet.isActive}
       >
-        <option value="">-- Select Department --</option>
+        <option value="">-- Select Option --</option>
         {visibleOptions.map((option) => (
           <option key={option._id} value={option._id}>
             {option.name}
           </option>
         ))}
       </select>
-
-      {dropdownSet.description && (
-        <small className="dropdown-description">
-          {dropdownSet.description}
-        </small>
-      )}
     </div>
   );
 };
 
-export default DepartmentDropdown;
+export default DropdownSet;
 ```
-
----
-
-### React Example: Admin Panel for Managing Options
-
-```javascript
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-
-const AdminDropdownManager = () => {
-  const [dropdownSets, setDropdownSets] = useState([]);
-  const [allOptions, setAllOptions] = useState([]);
-  const [selectedSet, setSelectedSet] = useState(null);
-  const [newOptionName, setNewOptionName] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const token = localStorage.getItem("authToken");
-  const axiosConfig = {
-    headers: { Authorization: `Bearer ${token}` },
-  };
-
-  // Fetch all dropdown sets
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [setsRes, optionsRes] = await Promise.all([
-          axios.get(
-            "http://localhost:5000/api/dropdowns/dropdown-sets",
-            axiosConfig
-          ),
-          axios.get("http://localhost:5000/api/dropdowns", axiosConfig),
-        ]);
-
-        setDropdownSets(setsRes.data.data);
-        setAllOptions(optionsRes.data.data);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // Create new option
-  const handleCreateOption = async () => {
-    if (!newOptionName.trim()) return;
-
-    setLoading(true);
-    try {
-      const response = await axios.post(
-        "http://localhost:5000/api/dropdowns",
-        {
-          name: newOptionName,
-          visibility: true,
-          isActive: true,
-        },
-        axiosConfig
-      );
-
-      setAllOptions([...allOptions, response.data.data]);
-      setNewOptionName("");
-      alert("Option created successfully!");
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to create option");
-    }
-    setLoading(false);
-  };
-
-  // Add option to selected dropdown set
-  const handleAddOptionToSet = async (optionId) => {
-    if (!selectedSet) return;
-
-    setLoading(true);
-    try {
-      const response = await axios.post(
-        `http://localhost:5000/api/dropdowns/dropdown-sets/${selectedSet._id}/options`,
-        { optionIds: [optionId] },
-        axiosConfig
-      );
-
-      setSelectedSet(response.data.data);
-      alert("Option added to dropdown set!");
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to add option");
-    }
-    setLoading(false);
-  };
-
-  // Remove option from selected dropdown set
-  const handleRemoveOptionFromSet = async (optionId) => {
-    if (!selectedSet) return;
-
-    setLoading(true);
-    try {
-      const response = await axios.delete(
-        `http://localhost:5000/api/dropdowns/dropdown-sets/${selectedSet._id}/options`,
-        {
-          ...axiosConfig,
-          data: { optionIds: [optionId] },
-        }
-      );
-
-      setSelectedSet(response.data.data);
-      alert("Option removed from dropdown set!");
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to remove option");
-    }
-    setLoading(false);
-  };
-
-  // Toggle option visibility
-  const handleToggleVisibility = async (option) => {
-    setLoading(true);
-    try {
-      const response = await axios.put(
-        `http://localhost:5000/api/dropdowns/${option._id}`,
-        { visibility: !option.visibility },
-        axiosConfig
-      );
-
-      setAllOptions(
-        allOptions.map((opt) =>
-          opt._id === option._id ? response.data.data : opt
-        )
-      );
-      alert("Option visibility updated!");
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to update visibility");
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="admin-dropdown-manager">
-      <h2>Dropdown Manager</h2>
-
-      {/* Create New Option */}
-      <section className="create-option-section">
-        <h3>Create New Option</h3>
-        <input
-          type="text"
-          value={newOptionName}
-          onChange={(e) => setNewOptionName(e.target.value)}
-          placeholder="Enter option name"
-          disabled={loading}
-        />
-        <button onClick={handleCreateOption} disabled={loading}>
-          Create Option
-        </button>
-      </section>
-
-      {/* Select Dropdown Set */}
-      <section className="select-set-section">
-        <h3>Select Dropdown Set</h3>
-        <select
-          value={selectedSet?._id || ""}
-          onChange={(e) => {
-            const set = dropdownSets.find((s) => s._id === e.target.value);
-            setSelectedSet(set);
-          }}
-          disabled={loading}
-        >
-          <option value="">-- Select Dropdown Set --</option>
-          {dropdownSets.map((set) => (
-            <option key={set._id} value={set._id}>
-              {set.name}
-            </option>
-          ))}
-        </select>
-      </section>
-
-      {/* Manage Options in Selected Set */}
-      {selectedSet && (
-        <section className="manage-options-section">
-          <h3>Options in "{selectedSet.name}"</h3>
-          <ul>
-            {selectedSet.options?.map((option) => (
-              <li key={option._id}>
-                {option.name}
-                <button
-                  onClick={() => handleRemoveOptionFromSet(option._id)}
-                  disabled={loading}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          <h4>Available Options to Add</h4>
-          <ul>
-            {allOptions
-              .filter(
-                (opt) => !selectedSet.options?.find((o) => o._id === opt._id)
-              )
-              .map((option) => (
-                <li key={option._id}>
-                  {option.name}
-                  <button
-                    onClick={() => handleAddOptionToSet(option._id)}
-                    disabled={loading}
-                  >
-                    Add to Set
-                  </button>
-                  <button
-                    onClick={() => handleToggleVisibility(option)}
-                    disabled={loading}
-                  >
-                    {option.visibility ? "Hide" : "Show"}
-                  </button>
-                </li>
-              ))}
-          </ul>
-        </section>
-      )}
-    </div>
-  );
-};
-
-export default AdminDropdownManager;
-```
-
----
-
-## Database Maintenance
-
-### Checking Data Integrity
-
-**Find Dropdown Sets with Invalid Option References**:
-
-```javascript
-// MongoDB Shell
-db["dropdown-sets"].aggregate([
-  {
-    $lookup: {
-      from: "dropdown-options",
-      localField: "options",
-      foreignField: "_id",
-      as: "validOptions",
-    },
-  },
-  {
-    $project: {
-      name: 1,
-      totalOptions: { $size: "$options" },
-      validOptions: { $size: "$validOptions" },
-      invalidCount: {
-        $subtract: [{ $size: "$options" }, { $size: "$validOptions" }],
-      },
-    },
-  },
-  {
-    $match: {
-      invalidCount: { $gt: 0 },
-    },
-  },
-]);
-```
-
-**Find Orphaned Options (not in any dropdown set)**:
-
-```javascript
-// MongoDB Shell
-db["dropdown-options"].aggregate([
-  {
-    $lookup: {
-      from: "dropdown-sets",
-      let: { optionId: "$_id" },
-      pipeline: [
-        {
-          $match: {
-            $expr: { $in: ["$$optionId", "$options"] },
-          },
-        },
-      ],
-      as: "usedInSets",
-    },
-  },
-  {
-    $match: {
-      usedInSets: { $size: 0 },
-    },
-  },
-  {
-    $project: {
-      name: 1,
-      isActive: 1,
-      createdAt: 1,
-    },
-  },
-]);
-```
-
----
-
-### Cleanup Operations
-
-**Remove Invalid Option References from All Dropdown Sets**:
-
-```javascript
-// MongoDB Shell
-// First, get all valid option IDs
-const validOptionIds = db["dropdown-options"].distinct("_id");
-
-// Update all dropdown sets to remove invalid references
-db["dropdown-sets"].updateMany(
-  {},
-  {
-    $pull: {
-      options: {
-        $nin: validOptionIds,
-      },
-    },
-  }
-);
-```
-
-**Delete Inactive Options Older Than 1 Year**:
-
-```javascript
-// MongoDB Shell
-const oneYearAgo = new Date();
-oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-// Find options to delete
-const optionsToDelete = db["dropdown-options"]
-  .find({
-    isActive: false,
-    updatedAt: { $lt: oneYearAgo },
-  })
-  .toArray();
-
-// Get their IDs
-const idsToDelete = optionsToDelete.map((opt) => opt._id);
-
-// Remove from all dropdown sets
-db["dropdown-sets"].updateMany(
-  {},
-  {
-    $pull: {
-      options: { $in: idsToDelete },
-    },
-  }
-);
-
-// Delete the options
-db["dropdown-options"].deleteMany({
-  _id: { $in: idsToDelete },
-});
-```
-
----
-
-### Backup and Restore
-
-**Backup Dropdown Collections**:
-
-```bash
-# Backup dropdown-options collection
-mongodump --db=walkout --collection=dropdown-options --out=./backup
-
-# Backup dropdown-sets collection
-mongodump --db=walkout --collection=dropdown-sets --out=./backup
-```
-
-**Restore Dropdown Collections**:
-
-```bash
-# Restore dropdown-options collection
-mongorestore --db=walkout --collection=dropdown-options ./backup/walkout/dropdown-options.bson
-
-# Restore dropdown-sets collection
-mongorestore --db=walkout --collection=dropdown-sets ./backup/walkout/dropdown-sets.bson
-```
-
----
-
-## Security and Permissions
-
-### Role-Based Access Control
-
-**Permissions Matrix**:
-
-| Action                  | User | Admin | SuperAdmin |
-| ----------------------- | ---- | ----- | ---------- |
-| View dropdown sets      | ✅   | ✅    | ✅         |
-| View dropdown options   | ✅   | ✅    | ✅         |
-| Create dropdown set     | ❌   | ✅    | ✅         |
-| Create dropdown option  | ❌   | ✅    | ✅         |
-| Update dropdown set     | ❌   | ✅    | ✅         |
-| Update dropdown option  | ❌   | ✅    | ✅         |
-| Delete dropdown set     | ❌   | ✅    | ✅         |
-| Delete dropdown option  | ❌   | ✅    | ✅         |
-| Add options to set      | ❌   | ✅    | ✅         |
-| Remove options from set | ❌   | ✅    | ✅         |
-| Bulk operations         | ❌   | ✅    | ✅         |
-
-### Authentication Flow
-
-1. **User Login**: Receive JWT token
-2. **Token Storage**: Store in localStorage/sessionStorage
-3. **Request Headers**: Include `Authorization: Bearer <token>` in all API requests
-4. **Token Validation**: Server validates token and user role
-5. **Permission Check**: Server verifies user has required role for action
-6. **Response**: Success or 401/403 error
-
-### Security Best Practices
-
-1. **Always validate tokens** on the server side
-2. **Never trust client-side role checks** - always verify on backend
-3. **Use HTTPS** in production to encrypt token transmission
-4. **Implement token expiration** and refresh mechanisms
-5. **Log all mutation operations** (create, update, delete) for audit trails
-6. **Sanitize input** to prevent injection attacks
-7. **Rate limit** bulk operations to prevent abuse
 
 ---
 
 ## Best Practices
 
-### Naming Conventions
-
-**Dropdown Option Names**:
+### 1. Option Naming
 
 - Use clear, descriptive names
 - Keep names concise (under 50 characters)
-- Use title case for consistency
+- Use consistent capitalization
 - Examples: "Primary Care", "Emergency Medicine", "Cardiology"
 
-**Dropdown Set Names**:
+### 2. Set Organization
 
-- Include context: "Patient Department Dropdown", "Staff Role Dropdown"
-- Avoid generic names like "Dropdown 1"
-- Use descriptive identifiers
+- Create separate sets for different contexts
+- Example: "Department Dropdown" vs "Specialty Dropdown"
+- Don't mix unrelated options in one set
 
-### Option Management
+### 3. Visibility vs Deletion
 
-**When to Create New Options**:
+- **Use `visibility: false`** for temporary hiding (data preserved)
+- **Use DELETE** only when option will never be used again
+- Visibility allows easy restoration
 
-- New department opens
-- New service category added
-- New classification needed
+### 4. Performance
 
-**When to Update Existing Options**:
+- Dropdown sets load all embedded options in one query (efficient)
+- Use pagination when fetching multiple sets
+- Filter by `isActive` and `visibility` on frontend
 
-- Department name changes
-- Option needs to be hidden temporarily
-- Correcting typos or improving clarity
+### 5. Uniqueness
 
-**When to Delete Options**:
-
-- Option will never be used again
-- Duplicate option exists
-- Data cleanup required
-
-### Dropdown Set Organization
-
-**Single-Purpose Sets**:
-
-- Create separate dropdown sets for different contexts
-- Example: "Patient Appointment Departments" vs "Staff Assignment Departments"
-- Allows different option combinations per context
-
-**Shared Option Pools**:
-
-- Leverage many-to-many architecture
-- Reuse common options across multiple sets
-- Update once, reflect everywhere
-
-### Performance Optimization
-
-**Frontend Caching**:
-
-```javascript
-// Cache dropdown sets for 5 minutes
-const CACHE_DURATION = 5 * 60 * 1000;
-const cache = new Map();
-
-const fetchDropdownSet = async (setId) => {
-  const cached = cache.get(setId);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
-  }
-
-  const response = await axios.get(`/api/dropdowns/dropdown-sets/${setId}`);
-  cache.set(setId, {
-    data: response.data.data,
-    timestamp: Date.now(),
-  });
-
-  return response.data.data;
-};
-```
-
-**Backend Pagination**:
-
-- Always use `limit` and `skip` for large datasets
-- Default limit: 10 for dropdown sets, 50 for dropdown options
-- Adjust based on frontend requirements
-
-**Database Indexing**:
-
-- Indexes already set on `name`, `isActive`, `visibility`
-- Ensure indexes are maintained
-- Monitor query performance
+- Option names must be unique **within each set**
+- Same name can exist across different sets
+- Set names must be globally unique
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+**Issue**: Can't create option with existing name
 
-**Issue**: Dropdown set shows option count but options don't populate
-
-**Solution**: Check if options are populated in the response. Use the get-by-ID endpoint which automatically populates options:
-
-```javascript
-GET /api/dropdowns/dropdown-sets/:id
-```
+**Solution**: Check if option name already exists in that specific set. Same name is allowed in different sets.
 
 ---
 
-**Issue**: Creating option fails with "Duplicate name" error
+**Issue**: Deleted dropdown set but need to restore options
 
-**Solution**: Option names must be globally unique. Check existing options:
-
-```javascript
-GET /api/dropdowns?limit=1000
-```
-
-Search for the name in the results or update to use a unique name.
+**Solution**: Embedded documents are deleted with parent. Always backup before deleting sets. Consider using `isActive: false` instead of deletion.
 
 ---
 
-**Issue**: Deleted option still appears in dropdown set
+**Issue**: Can't find option by ID
 
-**Solution**: This shouldn't happen due to automatic cleanup. If it does, manually remove:
+**Solution**: Option IDs are scoped to their parent set. Always provide both `dropdownSetId` and `optionId` in requests.
 
-```javascript
-DELETE /api/dropdowns/dropdown-sets/:setId/options
+---
+
+## API Summary
+
+| Endpoint                                       | Method | Access     | Description            |
+| ---------------------------------------------- | ------ | ---------- | ---------------------- |
+| `/dropdown-sets`                               | POST   | Admin      | Create dropdown set    |
+| `/dropdown-sets`                               | GET    | All        | Get all sets           |
+| `/dropdown-sets/:id`                           | GET    | All        | Get set by ID          |
+| `/dropdown-sets/:id`                           | PUT    | Admin      | Update set             |
+| `/dropdown-sets/:id`                           | DELETE | Admin      | Delete set             |
+| `/dropdown-sets/:setId/options`                | POST   | Admin      | Create option          |
+| `/dropdown-sets/:setId/options`                | GET    | All        | Get all options        |
+| `/dropdown-sets/:setId/options/:optId`         | GET    | All        | Get option by ID       |
+| `/dropdown-sets/:setId/options/:optId`         | PUT    | Admin      | Update option          |
+| `/dropdown-sets/:setId/options/:optId`         | DELETE | Admin      | Delete option          |
+| `/dropdown-sets/:setId/options/bulk`           | POST   | Admin      | Bulk create            |
+| `/dropdown-sets/:setId/options/bulk`           | PUT    | Admin      | Bulk update            |
+| `/dropdown-sets/:setId/options/bulk`           | DELETE | Admin      | Bulk delete            |
+| `/archives/dropdown-sets`                      | GET    | SuperAdmin | Get archived sets      |
+| `/archives/dropdown-sets/:id`                  | GET    | SuperAdmin | Get archived set by ID |
+| `/archives/dropdown-sets/:archiveId/restore`   | POST   | SuperAdmin | Restore archived set   |
+| `/archives/dropdown-sets/:archiveId/permanent` | DELETE | SuperAdmin | Permanently delete     |
+
+---
+
+## Restore Operations (SuperAdmin Only)
+
+### View Archived Dropdown Sets
+
+**Endpoint**: `GET /api/dropdowns/archives/dropdown-sets`
+
+**Access**: SuperAdmin only
+
+**Query Parameters**:
+
+- `deletedBy`: Filter by user who deleted (ObjectId)
+- `limit`: Number of results (default: 20)
+- `skip`: Pagination offset (default: 0)
+- `sortBy`: Sort field (default: "-deletedAt")
+
+**Response** (200):
+
+```json
 {
-  "optionIds": ["<option_id>"]
+  "success": true,
+  "count": 2,
+  "total": 5,
+  "data": [
+    {
+      "_id": "archive123",
+      "originalId": "6578abc123def456789012",
+      "name": "Payment Methods",
+      "description": "Select payment method",
+      "lastOptionId": 3,
+      "options": [
+        {
+          "originalId": "opt001",
+          "incrementalId": 1,
+          "name": "Cash",
+          "visibility": true,
+          "isActive": true
+        }
+      ],
+      "deletedBy": {
+        "_id": "user123",
+        "name": "Admin User",
+        "email": "admin@example.com"
+      },
+      "deletedAt": "2024-01-20T10:00:00.000Z",
+      "deletionReason": "Accidentally deleted"
+    }
+  ]
 }
 ```
 
-Then report the bug for investigation.
-
 ---
 
-**Issue**: Can't add option to dropdown set - "Invalid option IDs" error
+### Get Archived Dropdown Set by ID
 
-**Solution**: Verify the option exists:
+**Endpoint**: `GET /api/dropdowns/archives/dropdown-sets/:id`
 
-```javascript
-GET /api/dropdowns/:optionId
-```
+**Access**: SuperAdmin only
 
-If it doesn't exist, create it first.
+**Response** (200):
 
----
-
-**Issue**: Bulk operation partially fails
-
-**Solution**: Check the `errors` array in the response. Each error includes the problematic data and specific error message. Fix those items and retry.
-
----
-
-## API Testing with Postman
-
-### Environment Variables
-
-Create these variables in your Postman environment:
-
-- `base_url`: `http://localhost:5000`
-- `token`: Your JWT authentication token
-- `dropdown_set_id`: ID of a dropdown set (for testing)
-- `dropdown_option_id`: ID of a dropdown option (for testing)
-
-### Pre-request Script (for authenticated requests)
-
-```javascript
-pm.request.headers.add({
-  key: "Authorization",
-  value: "Bearer " + pm.environment.get("token"),
-});
-```
-
-### Sample Test Scripts
-
-**For successful creation (201)**:
-
-```javascript
-pm.test("Status code is 201", function () {
-  pm.response.to.have.status(201);
-});
-
-pm.test("Response has success flag", function () {
-  var jsonData = pm.response.json();
-  pm.expect(jsonData.success).to.eql(true);
-});
-
-pm.test("Response has data object", function () {
-  var jsonData = pm.response.json();
-  pm.expect(jsonData.data).to.be.an("object");
-});
-```
-
-**For successful retrieval (200)**:
-
-```javascript
-pm.test("Status code is 200", function () {
-  pm.response.to.have.status(200);
-});
-
-pm.test("Response has data array", function () {
-  var jsonData = pm.response.json();
-  pm.expect(jsonData.data).to.be.an("array");
-});
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "archive123",
+    "originalId": "6578abc123def456789012",
+    "name": "Payment Methods",
+    "options": [...],
+    "deletedBy": {...},
+    "deletedAt": "2024-01-20T10:00:00.000Z",
+    "originalCreatedAt": "2024-01-15T10:00:00.000Z"
+  }
+}
 ```
 
 ---
 
-## Changelog
+### Restore Archived Dropdown Set
 
-### Version 1.0.0 (Initial Release)
+**Endpoint**: `POST /api/dropdowns/archives/dropdown-sets/:archiveId/restore`
 
-- DropdownOption model with globally unique names
-- DropdownSet model with many-to-many relationship
-- 15 API endpoints (7 set endpoints, 5 option endpoints, 3 bulk endpoints)
-- Role-based access control (Admin/SuperAdmin for mutations)
-- Automatic cleanup on option deletion
-- Bulk operations with partial success handling
-- Comprehensive documentation
+**Access**: SuperAdmin only
+
+**Request Body** (optional):
+
+```json
+{
+  "newName": "Payment Methods (Restored)" // Optional: rename if original name exists
+}
+```
+
+**Response** (200):
+
+```json
+{
+  "success": true,
+  "message": "Dropdown set restored successfully",
+  "data": {
+    "_id": "new_id_123",
+    "name": "Payment Methods (Restored)",
+    "lastOptionId": 3,
+    "options": [
+      {
+        "_id": "new_opt_id",
+        "incrementalId": 1,
+        "name": "Cash",
+        "visibility": true,
+        "isActive": true
+      }
+    ],
+    "createdBy": {...},
+    "updatedBy": {...}  // User who performed restore
+  }
+}
+```
+
+**Error Response** (400) - Name Conflict:
+
+```json
+{
+  "success": false,
+  "message": "Dropdown set with name 'Payment Methods' already exists. Please rename the existing set first or provide a new name."
+}
+```
 
 ---
 
-## Support and Contact
+### Permanently Delete Archived Set
 
-For issues, questions, or feature requests:
+**Endpoint**: `DELETE /api/dropdowns/archives/dropdown-sets/:archiveId/permanent`
 
-- Backend Developer: [Your Contact]
-- Technical Documentation: This file
-- API Postman Collection: [Link to collection]
+**Access**: SuperAdmin only
+
+**Response** (200):
+
+```json
+{
+  "success": true,
+  "message": "Archived dropdown set permanently deleted"
+}
+```
 
 ---
 
-**Last Updated**: January 2024
-**Version**: 1.0.0
+**Last Updated**: December 2024
+**Version**: 2.1.0 (With Restore Operations)
 **Maintained By**: Walkout Backend Team

@@ -7,19 +7,19 @@ const {
   getButtonSetById,
   updateButtonSet,
   deleteButtonSet,
-  addButtonsToSet,
-  removeButtonsFromSet,
+  createButton,
+  getButtonsBySetId,
+  getButtonById,
+  updateButton,
+  deleteButton,
+  bulkCreateButtons,
+  bulkUpdateButtons,
+  bulkDeleteButtons,
+  getArchivedButtonSets,
+  getArchivedButtonSetById,
+  restoreButtonSet,
+  permanentlyDeleteArchivedSet,
 } = require("../controllers/buttonSetController");
-const {
-  createRadioButton,
-  getAllRadioButtons,
-  getRadioButtonById,
-  updateRadioButton,
-  deleteRadioButton,
-  bulkCreateRadioButtons,
-  bulkUpdateRadioButtons,
-  bulkDeleteRadioButtons,
-} = require("../controllers/radioButtonController");
 
 // ============================================
 // BUTTON SET ROUTES
@@ -55,71 +55,106 @@ router.delete(
   deleteButtonSet
 );
 
-// Add buttons to button set - Admin/SuperAdmin only
+// ============================================
+// RADIO BUTTON ROUTES (Embedded in Button Sets)
+// ============================================
+
+// Create radio button in a button set - Admin/SuperAdmin only
 router.post(
-  "/button-sets/:id/buttons",
+  "/button-sets/:buttonSetId/buttons",
   protect,
   restrictTo("admin", "superAdmin"),
-  addButtonsToSet
+  createButton
 );
 
-// Remove buttons from button set - Admin/SuperAdmin only
-router.delete(
-  "/button-sets/:id/buttons",
+// Get all buttons in a button set - All authenticated users
+router.get("/button-sets/:buttonSetId/buttons", protect, getButtonsBySetId);
+
+// Get button by ID in a button set - All authenticated users
+router.get(
+  "/button-sets/:buttonSetId/buttons/:buttonId",
+  protect,
+  getButtonById
+);
+
+// Update button in a button set - Admin/SuperAdmin only
+router.put(
+  "/button-sets/:buttonSetId/buttons/:buttonId",
   protect,
   restrictTo("admin", "superAdmin"),
-  removeButtonsFromSet
+  updateButton
+);
+
+// Delete button from a button set - Admin/SuperAdmin only
+router.delete(
+  "/button-sets/:buttonSetId/buttons/:buttonId",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  deleteButton
 );
 
 // ============================================
-// RADIO BUTTON ROUTES
+// BULK OPERATIONS
 // ============================================
 
-// Bulk operations - Must be before single ID routes
+// Bulk create buttons in a button set - Admin/SuperAdmin only
 router.post(
-  "/bulk",
+  "/button-sets/:buttonSetId/buttons/bulk",
   protect,
   restrictTo("admin", "superAdmin"),
-  bulkCreateRadioButtons
+  bulkCreateButtons
 );
 
+// Bulk update buttons in a button set - Admin/SuperAdmin only
 router.put(
-  "/bulk",
+  "/button-sets/:buttonSetId/buttons/bulk",
   protect,
   restrictTo("admin", "superAdmin"),
-  bulkUpdateRadioButtons
+  bulkUpdateButtons
 );
 
+// Bulk delete buttons from a button set - Admin/SuperAdmin only
 router.delete(
-  "/bulk",
+  "/button-sets/:buttonSetId/buttons/bulk",
   protect,
   restrictTo("admin", "superAdmin"),
-  bulkDeleteRadioButtons
+  bulkDeleteButtons
 );
 
-// Create radio button - Admin/SuperAdmin only
-router.post("/", protect, restrictTo("admin", "superAdmin"), createRadioButton);
+// ============================================
+// ARCHIVE OPERATIONS - SuperAdmin Only
+// ============================================
 
-// Get all radio buttons - All authenticated users
-router.get("/", protect, getAllRadioButtons);
-
-// Get radio button by ID - All authenticated users
-router.get("/:id", protect, getRadioButtonById);
-
-// Update radio button - Admin/SuperAdmin only
-router.put(
-  "/:id",
+// Get all archived button sets - SuperAdmin only
+router.get(
+  "/archives/button-sets",
   protect,
-  restrictTo("admin", "superAdmin"),
-  updateRadioButton
+  restrictTo("superAdmin"),
+  getArchivedButtonSets
 );
 
-// Delete radio button - Admin/SuperAdmin only
+// Get archived button set by ID - SuperAdmin only
+router.get(
+  "/archives/button-sets/:id",
+  protect,
+  restrictTo("superAdmin"),
+  getArchivedButtonSetById
+);
+
+// Restore archived button set - SuperAdmin only
+router.post(
+  "/archives/button-sets/:archiveId/restore",
+  protect,
+  restrictTo("superAdmin"),
+  restoreButtonSet
+);
+
+// Permanently delete archived button set - SuperAdmin only
 router.delete(
-  "/:id",
+  "/archives/button-sets/:archiveId/permanent",
   protect,
-  restrictTo("admin", "superAdmin"),
-  deleteRadioButton
+  restrictTo("superAdmin"),
+  permanentlyDeleteArchivedSet
 );
 
 module.exports = router;

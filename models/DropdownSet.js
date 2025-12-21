@@ -1,5 +1,32 @@
 const mongoose = require("mongoose");
 
+// Dropdown Option subdocument schema
+const dropdownOptionSchema = new mongoose.Schema(
+  {
+    incrementalId: {
+      type: Number,
+      required: true,
+      // Unique within the parent dropdown set (enforced in controller)
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    visibility: {
+      type: Boolean,
+      default: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
 const dropdownSetSchema = new mongoose.Schema(
   {
     name: {
@@ -12,12 +39,12 @@ const dropdownSetSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    options: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "DropdownOption",
-      },
-    ],
+    lastOptionId: {
+      type: Number,
+      default: 0,
+      // Counter for generating incremental IDs for options
+    },
+    options: [dropdownOptionSchema], // Embedded subdocuments
     isActive: {
       type: Boolean,
       default: true,

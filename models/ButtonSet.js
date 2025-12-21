@@ -1,5 +1,32 @@
 const mongoose = require("mongoose");
 
+// Radio Button subdocument schema
+const radioButtonSchema = new mongoose.Schema(
+  {
+    incrementalId: {
+      type: Number,
+      required: true,
+      // Unique within the parent button set (enforced in controller)
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    visibility: {
+      type: Boolean,
+      default: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
 const buttonSetSchema = new mongoose.Schema(
   {
     name: {
@@ -12,12 +39,12 @@ const buttonSetSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    buttons: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "RadioButton",
-      },
-    ],
+    lastButtonId: {
+      type: Number,
+      default: 0,
+      // Counter for generating incremental IDs for buttons
+    },
+    buttons: [radioButtonSchema], // Embedded subdocuments
     isActive: {
       type: Boolean,
       default: true,

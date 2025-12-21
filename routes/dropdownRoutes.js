@@ -7,19 +7,19 @@ const {
   getDropdownSetById,
   updateDropdownSet,
   deleteDropdownSet,
-  addOptionsToSet,
-  removeOptionsFromSet,
+  createOption,
+  getOptionsBySetId,
+  getOptionById,
+  updateOption,
+  deleteOption,
+  bulkCreateOptions,
+  bulkUpdateOptions,
+  bulkDeleteOptions,
+  getArchivedDropdownSets,
+  getArchivedDropdownSetById,
+  restoreDropdownSet,
+  permanentlyDeleteArchivedSet,
 } = require("../controllers/dropdownSetController");
-const {
-  createDropdownOption,
-  getAllDropdownOptions,
-  getDropdownOptionById,
-  updateDropdownOption,
-  deleteDropdownOption,
-  bulkCreateDropdownOptions,
-  bulkUpdateDropdownOptions,
-  bulkDeleteDropdownOptions,
-} = require("../controllers/dropdownOptionController");
 
 // ============================================
 // DROPDOWN SET ROUTES
@@ -55,76 +55,106 @@ router.delete(
   deleteDropdownSet
 );
 
-// Add options to dropdown set - Admin/SuperAdmin only
+// ============================================
+// DROPDOWN OPTION ROUTES (Embedded in Dropdown Sets)
+// ============================================
+
+// Create dropdown option in a dropdown set - Admin/SuperAdmin only
 router.post(
-  "/dropdown-sets/:id/options",
+  "/dropdown-sets/:dropdownSetId/options",
   protect,
   restrictTo("admin", "superAdmin"),
-  addOptionsToSet
+  createOption
 );
 
-// Remove options from dropdown set - Admin/SuperAdmin only
-router.delete(
-  "/dropdown-sets/:id/options",
+// Get all options in a dropdown set - All authenticated users
+router.get("/dropdown-sets/:dropdownSetId/options", protect, getOptionsBySetId);
+
+// Get option by ID in a dropdown set - All authenticated users
+router.get(
+  "/dropdown-sets/:dropdownSetId/options/:optionId",
+  protect,
+  getOptionById
+);
+
+// Update option in a dropdown set - Admin/SuperAdmin only
+router.put(
+  "/dropdown-sets/:dropdownSetId/options/:optionId",
   protect,
   restrictTo("admin", "superAdmin"),
-  removeOptionsFromSet
+  updateOption
+);
+
+// Delete option from a dropdown set - Admin/SuperAdmin only
+router.delete(
+  "/dropdown-sets/:dropdownSetId/options/:optionId",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  deleteOption
 );
 
 // ============================================
-// DROPDOWN OPTION ROUTES
+// BULK OPERATIONS
 // ============================================
 
-// Bulk operations - Must be before single ID routes
+// Bulk create options in a dropdown set - Admin/SuperAdmin only
 router.post(
-  "/bulk",
+  "/dropdown-sets/:dropdownSetId/options/bulk",
   protect,
   restrictTo("admin", "superAdmin"),
-  bulkCreateDropdownOptions
+  bulkCreateOptions
 );
 
+// Bulk update options in a dropdown set - Admin/SuperAdmin only
 router.put(
-  "/bulk",
+  "/dropdown-sets/:dropdownSetId/options/bulk",
   protect,
   restrictTo("admin", "superAdmin"),
-  bulkUpdateDropdownOptions
+  bulkUpdateOptions
 );
 
+// Bulk delete options from a dropdown set - Admin/SuperAdmin only
 router.delete(
-  "/bulk",
+  "/dropdown-sets/:dropdownSetId/options/bulk",
   protect,
   restrictTo("admin", "superAdmin"),
-  bulkDeleteDropdownOptions
+  bulkDeleteOptions
 );
 
-// Create dropdown option - Admin/SuperAdmin only
+// ============================================
+// ARCHIVE OPERATIONS - SuperAdmin Only
+// ============================================
+
+// Get all archived dropdown sets - SuperAdmin only
+router.get(
+  "/archives/dropdown-sets",
+  protect,
+  restrictTo("superAdmin"),
+  getArchivedDropdownSets
+);
+
+// Get archived dropdown set by ID - SuperAdmin only
+router.get(
+  "/archives/dropdown-sets/:id",
+  protect,
+  restrictTo("superAdmin"),
+  getArchivedDropdownSetById
+);
+
+// Restore archived dropdown set - SuperAdmin only
 router.post(
-  "/",
+  "/archives/dropdown-sets/:archiveId/restore",
   protect,
-  restrictTo("admin", "superAdmin"),
-  createDropdownOption
+  restrictTo("superAdmin"),
+  restoreDropdownSet
 );
 
-// Get all dropdown options - All authenticated users
-router.get("/", protect, getAllDropdownOptions);
-
-// Get dropdown option by ID - All authenticated users
-router.get("/:id", protect, getDropdownOptionById);
-
-// Update dropdown option - Admin/SuperAdmin only
-router.put(
-  "/:id",
-  protect,
-  restrictTo("admin", "superAdmin"),
-  updateDropdownOption
-);
-
-// Delete dropdown option - Admin/SuperAdmin only
+// Permanently delete archived dropdown set - SuperAdmin only
 router.delete(
-  "/:id",
+  "/archives/dropdown-sets/:archiveId/permanent",
   protect,
-  restrictTo("admin", "superAdmin"),
-  deleteDropdownOption
+  restrictTo("superAdmin"),
+  permanentlyDeleteArchivedSet
 );
 
 module.exports = router;
