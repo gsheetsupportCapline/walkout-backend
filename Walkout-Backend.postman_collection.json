@@ -1256,14 +1256,7 @@
               "name": "Get All Button Sets",
               "request": {
                 "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{auth_token}}",
-                      "type": "string"
-                    }
-                  ]
+                  "type": "noauth"
                 },
                 "method": "GET",
                 "header": [],
@@ -1289,7 +1282,7 @@
                     }
                   ]
                 },
-                "description": "Get all button sets. All authenticated users."
+                "description": "Get all button sets. Public endpoint - no authentication required."
               },
               "response": []
             },
@@ -1732,6 +1725,329 @@
               "response": []
             }
           ]
+        },
+        {
+          "name": "Archive Operations (SuperAdmin)",
+          "item": [
+            {
+              "name": "Get All Archived Button Sets",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/archives/button-sets?limit=20&skip=0&sortBy=-deletedAt",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "radio-buttons", "archives", "button-sets"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "skip",
+                      "value": "0"
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "-deletedAt"
+                    },
+                    {
+                      "key": "deletedBy",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all archived button sets with filters. SuperAdmin only. Use deletedBy filter to find items deleted by specific user."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Archived Button Set by ID",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/archives/button-sets/{{archive_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "radio-buttons",
+                    "archives",
+                    "button-sets",
+                    "{{archive_id}}"
+                  ]
+                },
+                "description": "Get specific archived button set details. SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Restore Button Set (Full Set)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"newName\": \"Treatment Type (Restored)\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/archives/button-sets/{{archive_id}}/restore",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "radio-buttons",
+                    "archives",
+                    "button-sets",
+                    "{{archive_id}}",
+                    "restore"
+                  ]
+                },
+                "description": "Restore full button set. Provide newName if original name conflicts. SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Restore Button (Individual)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/archives/button-sets/{{archive_id}}/restore",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "radio-buttons",
+                    "archives",
+                    "button-sets",
+                    "{{archive_id}}",
+                    "restore"
+                  ]
+                },
+                "description": "Restore individual button. If parent set exists, button is added back. If parent deleted, new set is created. SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Permanently Delete Archived Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/archives/button-sets/{{archive_id}}/permanent",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "radio-buttons",
+                    "archives",
+                    "button-sets",
+                    "{{archive_id}}",
+                    "permanent"
+                  ]
+                },
+                "description": "Permanently delete from archive. Cannot be undone. SuperAdmin only."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "UsedIn Operations",
+          "item": [
+            {
+              "name": "Add UsedIn References",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"references\": [\"profile_screen\", \"registration_form\", \"dashboard_filter\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/used-in/add",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "radio-buttons",
+                    "button-sets",
+                    "{{button_set_id}}",
+                    "used-in",
+                    "add"
+                  ]
+                },
+                "description": "Add references to usedIn array. Tracks where this button set is being used. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Remove UsedIn References",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"references\": [\"profile_screen\", \"old_module\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/used-in/remove",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "radio-buttons",
+                    "button-sets",
+                    "{{button_set_id}}",
+                    "used-in",
+                    "remove"
+                  ]
+                },
+                "description": "Remove references from usedIn array. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Replace UsedIn Array",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"references\": [\"new_screen\", \"updated_module\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/used-in",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "radio-buttons",
+                    "button-sets",
+                    "{{button_set_id}}",
+                    "used-in"
+                  ]
+                },
+                "description": "Replace entire usedIn array with new references. Use empty array [] to clear all. Admin/SuperAdmin only."
+              },
+              "response": []
+            }
+          ]
         }
       ]
     },
@@ -1778,14 +2094,7 @@
               "name": "Get All Dropdown Sets",
               "request": {
                 "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{auth_token}}",
-                      "type": "string"
-                    }
-                  ]
+                  "type": "noauth"
                 },
                 "method": "GET",
                 "header": [],
@@ -1811,7 +2120,7 @@
                     }
                   ]
                 },
-                "description": "Get all dropdown sets. All authenticated users."
+                "description": "Get all dropdown sets. Public endpoint - no authentication required."
               },
               "response": []
             },
@@ -2292,6 +2601,329 @@
               "response": []
             }
           ]
+        },
+        {
+          "name": "Archive Operations (SuperAdmin)",
+          "item": [
+            {
+              "name": "Get All Archived Dropdown Sets",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/archives/dropdown-sets?limit=20&skip=0&sortBy=-deletedAt",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dropdowns", "archives", "dropdown-sets"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "skip",
+                      "value": "0"
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "-deletedAt"
+                    },
+                    {
+                      "key": "deletedBy",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all archived dropdown sets with filters. SuperAdmin only. Use deletedBy filter to find items deleted by specific user."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Archived Dropdown Set by ID",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/archives/dropdown-sets/{{archive_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "archives",
+                    "dropdown-sets",
+                    "{{archive_id}}"
+                  ]
+                },
+                "description": "Get specific archived dropdown set details. SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Restore Dropdown Set (Full Set)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"newName\": \"Payment Methods (Restored)\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/archives/dropdown-sets/{{archive_id}}/restore",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "archives",
+                    "dropdown-sets",
+                    "{{archive_id}}",
+                    "restore"
+                  ]
+                },
+                "description": "Restore full dropdown set. Provide newName if original name conflicts. SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Restore Option (Individual)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/archives/dropdown-sets/{{archive_id}}/restore",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "archives",
+                    "dropdown-sets",
+                    "{{archive_id}}",
+                    "restore"
+                  ]
+                },
+                "description": "Restore individual option. If parent set exists, option is added back. If parent deleted, new set is created. SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Permanently Delete Archived Set",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/archives/dropdown-sets/{{archive_id}}/permanent",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "archives",
+                    "dropdown-sets",
+                    "{{archive_id}}",
+                    "permanent"
+                  ]
+                },
+                "description": "Permanently delete from archive. Cannot be undone. SuperAdmin only."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "UsedIn Operations",
+          "item": [
+            {
+              "name": "Add UsedIn References",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"references\": [\"address_form\", \"shipping_page\", \"settings_module\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets/{{dropdown_set_id}}/used-in/add",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "dropdown-sets",
+                    "{{dropdown_set_id}}",
+                    "used-in",
+                    "add"
+                  ]
+                },
+                "description": "Add references to usedIn array. Tracks where this dropdown set is being used. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Remove UsedIn References",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"references\": [\"old_screen\", \"removed_module\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets/{{dropdown_set_id}}/used-in/remove",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "dropdown-sets",
+                    "{{dropdown_set_id}}",
+                    "used-in",
+                    "remove"
+                  ]
+                },
+                "description": "Remove references from usedIn array. Admin/SuperAdmin only."
+              },
+              "response": []
+            },
+            {
+              "name": "Replace UsedIn Array",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{auth_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"references\": [\"new_form\", \"updated_page\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/dropdowns/dropdown-sets/{{dropdown_set_id}}/used-in",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "dropdowns",
+                    "dropdown-sets",
+                    "{{dropdown_set_id}}",
+                    "used-in"
+                  ]
+                },
+                "description": "Replace entire usedIn array with new references. Use empty array [] to clear all. Admin/SuperAdmin only."
+              },
+              "response": []
+            }
+          ]
         }
       ]
     }
@@ -2359,6 +2991,11 @@
     },
     {
       "key": "dropdown_option_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "archive_id",
       "value": "",
       "type": "string"
     }

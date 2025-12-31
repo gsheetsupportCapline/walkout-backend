@@ -19,6 +19,9 @@ const {
   getArchivedButtonSetById,
   restoreButtonSet,
   permanentlyDeleteArchivedSet,
+  addUsedInReferences,
+  removeUsedInReferences,
+  replaceUsedInReferences,
 } = require("../controllers/buttonSetController");
 
 // ============================================
@@ -33,8 +36,8 @@ router.post(
   createButtonSet
 );
 
-// Get all button sets - All authenticated users
-router.get("/button-sets", protect, getAllButtonSets);
+// Get all button sets - Public (no authentication required)
+router.get("/button-sets", getAllButtonSets);
 
 // Get button set by ID - All authenticated users
 router.get("/button-sets/:id", protect, getButtonSetById);
@@ -155,6 +158,34 @@ router.delete(
   protect,
   restrictTo("superAdmin"),
   permanentlyDeleteArchivedSet
+);
+
+// ============================================
+// USED IN OPERATIONS - Admin/SuperAdmin
+// ============================================
+
+// Add references to usedIn array - Admin/SuperAdmin only
+router.patch(
+  "/button-sets/:id/used-in/add",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  addUsedInReferences
+);
+
+// Remove references from usedIn array - Admin/SuperAdmin only
+router.patch(
+  "/button-sets/:id/used-in/remove",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  removeUsedInReferences
+);
+
+// Replace entire usedIn array - Admin/SuperAdmin only
+router.put(
+  "/button-sets/:id/used-in",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  replaceUsedInReferences
 );
 
 module.exports = router;

@@ -54,19 +54,25 @@ exports.createButtonSet = async (req, res) => {
 // Get all button sets
 exports.getAllButtonSets = async (req, res) => {
   try {
-    const { isActive, limit = 10, skip = 0 } = req.query;
+    const { isActive, limit, skip = 0 } = req.query;
 
     const filter = {};
     if (isActive !== undefined) {
       filter.isActive = isActive === "true";
     }
 
-    const buttonSets = await ButtonSet.find(filter)
+    let query = ButtonSet.find(filter)
       .populate("createdBy", "name email")
       .populate("updatedBy", "name email")
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
       .skip(parseInt(skip));
+
+    // Only apply limit if provided
+    if (limit) {
+      query = query.limit(parseInt(limit));
+    }
+
+    const buttonSets = await query;
 
     res.status(200).json({
       success: true,
@@ -1029,6 +1035,176 @@ exports.permanentlyDeleteArchivedSet = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error permanently deleting archived set",
+      error: error.message,
+    });
+  }
+};
+
+// ====================================
+// USED IN OPERATIONS
+// ====================================
+
+// Update usedIn array - Add references
+exports.addUsedInReferences = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { references } = req.body;
+
+    if (!references || !Array.isArray(references) || references.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "References array is required",
+      });
+    }
+
+    const buttonSet = await ButtonSet.findById(id);
+
+    if (!buttonSet) {
+      return res.status(404).json({
+        success: false,
+        message: "Button set not found",
+      });
+    }
+
+    // Add unique references to usedIn array
+    const newReferences = references.filter(
+      (ref) => !buttonSet.usedIn.includes(ref)
+    );
+
+    if (newReferences.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "All references already exist in usedIn array",
+        data: buttonSet,
+      });
+    }
+
+    buttonSet.usedIn.push(...newReferences);
+    buttonSet.updatedBy = req.user._id;
+    await buttonSet.save();
+
+    const populatedSet = await ButtonSet.findById(id)
+      .populate("createdBy", "name email")
+      .populate("updatedBy", "name email");
+
+    res.status(200).json({
+      success: true,
+      message: `${newReferences.length} reference(s) added successfully`,
+      data: populatedSet,
+    });
+  } catch (error) {
+    console.error("Error adding usedIn references:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error adding usedIn references",
+      error: error.message,
+    });
+  }
+};
+
+// Update usedIn array - Remove references
+exports.removeUsedInReferences = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { references } = req.body;
+
+    if (!references || !Array.isArray(references) || references.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "References array is required",
+      });
+    }
+
+    const buttonSet = await ButtonSet.findById(id);
+
+    if (!buttonSet) {
+      return res.status(404).json({
+        success: false,
+        message: "Button set not found",
+      });
+    }
+
+    // Remove references from usedIn array
+    const originalLength = buttonSet.usedIn.length;
+    buttonSet.usedIn = buttonSet.usedIn.filter(
+      (ref) => !references.includes(ref)
+    );
+
+    const removedCount = originalLength - buttonSet.usedIn.length;
+
+    if (removedCount === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No matching references found to remove",
+        data: buttonSet,
+      });
+    }
+
+    buttonSet.updatedBy = req.user._id;
+    await buttonSet.save();
+
+    const populatedSet = await ButtonSet.findById(id)
+      .populate("createdBy", "name email")
+      .populate("updatedBy", "name email");
+
+    res.status(200).json({
+      success: true,
+      message: `${removedCount} reference(s) removed successfully`,
+      data: populatedSet,
+    });
+  } catch (error) {
+    console.error("Error removing usedIn references:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error removing usedIn references",
+      error: error.message,
+    });
+  }
+};
+
+// Replace entire usedIn array
+exports.replaceUsedInReferences = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { references } = req.body;
+
+    if (!references || !Array.isArray(references)) {
+      return res.status(400).json({
+        success: false,
+        message: "References array is required (can be empty to clear all)",
+      });
+    }
+
+    const buttonSet = await ButtonSet.findById(id);
+
+    if (!buttonSet) {
+      return res.status(404).json({
+        success: false,
+        message: "Button set not found",
+      });
+    }
+
+    // Remove duplicates from input
+    const uniqueReferences = [...new Set(references)];
+
+    buttonSet.usedIn = uniqueReferences;
+    buttonSet.updatedBy = req.user._id;
+    await buttonSet.save();
+
+    const populatedSet = await ButtonSet.findById(id)
+      .populate("createdBy", "name email")
+      .populate("updatedBy", "name email");
+
+    res.status(200).json({
+      success: true,
+      message: "UsedIn references updated successfully",
+      data: populatedSet,
+    });
+  } catch (error) {
+    console.error("Error replacing usedIn references:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error replacing usedIn references",
       error: error.message,
     });
   }

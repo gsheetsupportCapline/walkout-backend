@@ -477,7 +477,7 @@ All endpoints require JWT authentication via the `Authorization: Bearer <token>`
 
 **Endpoint**: `GET /api/dropdowns/dropdown-sets`
 
-**Access**: All authenticated users
+**Access**: Public (no authentication required)
 
 **Query Parameters**:
 
@@ -1174,7 +1174,7 @@ export default DropdownSet;
 | Endpoint                                       | Method | Access     | Description            |
 | ---------------------------------------------- | ------ | ---------- | ---------------------- |
 | `/dropdown-sets`                               | POST   | Admin      | Create dropdown set    |
-| `/dropdown-sets`                               | GET    | All        | Get all sets           |
+| `/dropdown-sets`                               | GET    | Public     | Get all sets           |
 | `/dropdown-sets/:id`                           | GET    | All        | Get set by ID          |
 | `/dropdown-sets/:id`                           | PUT    | Admin      | Update set             |
 | `/dropdown-sets/:id`                           | DELETE | Admin      | Delete set             |
@@ -1194,6 +1194,22 @@ export default DropdownSet;
 ---
 
 ## Restore Operations (SuperAdmin Only)
+
+### Smart Restore Behavior
+
+The restore system intelligently handles different deletion scenarios:
+
+**Full Set Deletion** (`deletionType: "set"`):
+
+- Restores entire dropdown set with all options
+- Preserves original name, description, and all data
+- Creates new set in main collection
+
+**Individual Option Deletion** (`deletionType: "option"`):
+
+- **If parent set exists**: Restores option back to original parent set
+- **If parent set was deleted**: Creates new set with original name and this option
+- Preserves original set name and description (no auto-generated names)
 
 ### View Archived Dropdown Sets
 
@@ -1221,6 +1237,7 @@ export default DropdownSet;
       "originalId": "6578abc123def456789012",
       "name": "Payment Methods",
       "description": "Select payment method",
+      "deletionType": "set",
       "lastOptionId": 3,
       "options": [
         {
@@ -1238,6 +1255,27 @@ export default DropdownSet;
       },
       "deletedAt": "2024-01-20T10:00:00.000Z",
       "deletionReason": "Accidentally deleted"
+    },
+    {
+      "_id": "archive124",
+      "originalId": "opt002",
+      "name": "Payment Methods",
+      "description": "Select payment method",
+      "deletionType": "option",
+      "parentSetId": "6578abc123def456789012",
+      "parentSetName": "Payment Methods",
+      "options": [
+        {
+          "originalId": "opt002",
+          "incrementalId": 2,
+          "name": "Card",
+          "visibility": true,
+          "isActive": true
+        }
+      ],
+      "deletedBy": {...},
+      "deletedAt": "2024-01-21T10:00:00.000Z",
+      "deletionReason": "Individual option deletion"
     }
   ]
 }
@@ -1270,7 +1308,7 @@ export default DropdownSet;
 
 ---
 
-### Restore Archived Dropdown Set
+### Restore Archived Dropdown Set or Option
 
 **Endpoint**: `POST /api/dropdowns/archives/dropdown-sets/:archiveId/restore`
 
@@ -1280,19 +1318,21 @@ export default DropdownSet;
 
 ```json
 {
-  "newName": "Payment Methods (Restored)" // Optional: rename if original name exists
+  "newName": "Payment Methods (Restored)" // Optional: rename if name conflict
 }
 ```
 
-**Response** (200):
+**Case 1: Restore Full Dropdown Set** (`deletionType: "set"`):
 
 ```json
+// Response (200)
 {
   "success": true,
   "message": "Dropdown set restored successfully",
   "data": {
     "_id": "new_id_123",
-    "name": "Payment Methods (Restored)",
+    "name": "Payment Methods",
+    "description": "Select payment method",  // Original description preserved
     "lastOptionId": 3,
     "options": [
       {
@@ -1309,12 +1349,73 @@ export default DropdownSet;
 }
 ```
 
-**Error Response** (400) - Name Conflict:
+**Case 2: Restore Individual Option (Parent Set Exists)** (`deletionType: "option"`):
 
 ```json
+// Response (200)
+{
+  "success": true,
+  "message": "Option restored successfully to set 'Payment Methods'",
+  "data": {
+    "_id": "original_set_id", // Parent set ID
+    "name": "Payment Methods",
+    "options": [
+      {
+        "_id": "existing_opt_id",
+        "incrementalId": 1,
+        "name": "Cash"
+      },
+      {
+        "_id": "restored_opt_id",
+        "incrementalId": 2,
+        "name": "Card" // Restored option added back
+      }
+    ]
+  }
+}
+```
+
+**Case 3: Restore Individual Option (Parent Set Deleted)**:
+
+```json
+// Response (200)
+{
+  "success": true,
+  "message": "Parent set was deleted. Created new set 'Payment Methods' with restored option.",
+  "data": {
+    "_id": "new_set_id",
+    "name": "Payment Methods", // Original parent set name
+    "description": "Select payment method", // Original description
+    "options": [
+      {
+        "_id": "restored_opt_id",
+        "incrementalId": 2,
+        "name": "Card"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses**:
+
+```json
+// Name conflict for full set restore
 {
   "success": false,
-  "message": "Dropdown set with name 'Payment Methods' already exists. Please rename the existing set first or provide a new name."
+  "message": "Dropdown set with name 'Payment Methods' already exists. Provide 'newName' to restore with a different name."
+}
+
+// Option name conflict in parent set
+{
+  "success": false,
+  "message": "Option with name 'Cash' already exists in set 'Payment Methods'. Cannot restore."
+}
+
+// Parent deleted + name conflict
+{
+  "success": false,
+  "message": "Parent set 'Payment Methods' was also deleted. A set with this name now exists. Provide 'newName' to create a new set with this option."
 }
 ```
 

@@ -19,6 +19,9 @@ const {
   getArchivedDropdownSetById,
   restoreDropdownSet,
   permanentlyDeleteArchivedSet,
+  addUsedInReferences,
+  removeUsedInReferences,
+  replaceUsedInReferences,
 } = require("../controllers/dropdownSetController");
 
 // ============================================
@@ -33,8 +36,8 @@ router.post(
   createDropdownSet
 );
 
-// Get all dropdown sets - All authenticated users
-router.get("/dropdown-sets", protect, getAllDropdownSets);
+// Get all dropdown sets - Public (no authentication required)
+router.get("/dropdown-sets", getAllDropdownSets);
 
 // Get dropdown set by ID - All authenticated users
 router.get("/dropdown-sets/:id", protect, getDropdownSetById);
@@ -155,6 +158,34 @@ router.delete(
   protect,
   restrictTo("superAdmin"),
   permanentlyDeleteArchivedSet
+);
+
+// ============================================
+// USED IN OPERATIONS - Admin/SuperAdmin
+// ============================================
+
+// Add references to usedIn array - Admin/SuperAdmin only
+router.patch(
+  "/dropdown-sets/:id/used-in/add",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  addUsedInReferences
+);
+
+// Remove references from usedIn array - Admin/SuperAdmin only
+router.patch(
+  "/dropdown-sets/:id/used-in/remove",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  removeUsedInReferences
+);
+
+// Replace entire usedIn array - Admin/SuperAdmin only
+router.put(
+  "/dropdown-sets/:id/used-in",
+  protect,
+  restrictTo("admin", "superAdmin"),
+  replaceUsedInReferences
 );
 
 module.exports = router;

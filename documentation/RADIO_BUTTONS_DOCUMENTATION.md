@@ -477,7 +477,7 @@ All endpoints require JWT authentication via the `Authorization: Bearer <token>`
 
 **Endpoint**: `GET /api/radio-buttons/button-sets`
 
-**Access**: All authenticated users
+**Access**: Public (no authentication required)
 
 **Query Parameters**:
 
@@ -1175,7 +1175,7 @@ export default RadioButtonSet;
 | Endpoint                                     | Method | Access     | Description            |
 | -------------------------------------------- | ------ | ---------- | ---------------------- |
 | `/button-sets`                               | POST   | Admin      | Create button set      |
-| `/button-sets`                               | GET    | All        | Get all sets           |
+| `/button-sets`                               | GET    | Public     | Get all sets           |
 | `/button-sets/:id`                           | GET    | All        | Get set by ID          |
 | `/button-sets/:id`                           | PUT    | Admin      | Update set             |
 | `/button-sets/:id`                           | DELETE | Admin      | Delete set             |
@@ -1195,6 +1195,22 @@ export default RadioButtonSet;
 ---
 
 ## Restore Operations (SuperAdmin Only)
+
+### Smart Restore Behavior
+
+The restore system intelligently handles different deletion scenarios:
+
+**Full Set Deletion** (`deletionType: "set"`):
+
+- Restores entire button set with all buttons
+- Preserves original name, description, and all data
+- Creates new set in main collection
+
+**Individual Button Deletion** (`deletionType: "button"`):
+
+- **If parent set exists**: Restores button back to original parent set
+- **If parent set was deleted**: Creates new set with original name and this button
+- Preserves original set name and description (no auto-generated names)
 
 ### View Archived Button Sets
 
@@ -1222,6 +1238,7 @@ export default RadioButtonSet;
       "originalId": "6578abc123def456789012",
       "name": "Treatment Type",
       "description": "Select treatment type",
+      "deletionType": "set",
       "lastButtonId": 3,
       "buttons": [
         {
@@ -1239,6 +1256,27 @@ export default RadioButtonSet;
       },
       "deletedAt": "2024-01-20T10:00:00.000Z",
       "deletionReason": "Accidentally deleted"
+    },
+    {
+      "_id": "archive124",
+      "originalId": "btn002",
+      "name": "Treatment Type",
+      "description": "Select treatment type",
+      "deletionType": "button",
+      "parentSetId": "6578abc123def456789012",
+      "parentSetName": "Treatment Type",
+      "buttons": [
+        {
+          "originalId": "btn002",
+          "incrementalId": 2,
+          "name": "Filling",
+          "visibility": true,
+          "isActive": true
+        }
+      ],
+      "deletedBy": {...},
+      "deletedAt": "2024-01-21T10:00:00.000Z",
+      "deletionReason": "Individual button deletion"
     }
   ]
 }
@@ -1271,7 +1309,7 @@ export default RadioButtonSet;
 
 ---
 
-### Restore Archived Button Set
+### Restore Archived Button Set or Button
 
 **Endpoint**: `POST /api/radio-buttons/archives/button-sets/:archiveId/restore`
 
@@ -1281,19 +1319,21 @@ export default RadioButtonSet;
 
 ```json
 {
-  "newName": "Treatment Type (Restored)" // Optional: rename if original name exists
+  "newName": "Treatment Type (Restored)" // Optional: rename if name conflict
 }
 ```
 
-**Response** (200):
+**Case 1: Restore Full Button Set** (`deletionType: "set"`):
 
 ```json
+// Response (200)
 {
   "success": true,
   "message": "Button set restored successfully",
   "data": {
     "_id": "new_id_123",
-    "name": "Treatment Type (Restored)",
+    "name": "Treatment Type",
+    "description": "Select treatment type",  // Original description preserved
     "lastButtonId": 3,
     "buttons": [
       {
@@ -1310,12 +1350,73 @@ export default RadioButtonSet;
 }
 ```
 
-**Error Response** (400) - Name Conflict:
+**Case 2: Restore Individual Button (Parent Set Exists)** (`deletionType: "button"`):
 
 ```json
+// Response (200)
+{
+  "success": true,
+  "message": "Button restored successfully to set 'Treatment Type'",
+  "data": {
+    "_id": "original_set_id", // Parent set ID
+    "name": "Treatment Type",
+    "buttons": [
+      {
+        "_id": "existing_btn_id",
+        "incrementalId": 1,
+        "name": "Cleaning"
+      },
+      {
+        "_id": "restored_btn_id",
+        "incrementalId": 2,
+        "name": "Filling" // Restored button added back
+      }
+    ]
+  }
+}
+```
+
+**Case 3: Restore Individual Button (Parent Set Deleted)**:
+
+```json
+// Response (200)
+{
+  "success": true,
+  "message": "Parent set was deleted. Created new set 'Treatment Type' with restored button.",
+  "data": {
+    "_id": "new_set_id",
+    "name": "Treatment Type", // Original parent set name
+    "description": "Select treatment type", // Original description
+    "buttons": [
+      {
+        "_id": "restored_btn_id",
+        "incrementalId": 2,
+        "name": "Filling"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses**:
+
+```json
+// Name conflict for full set restore
 {
   "success": false,
-  "message": "Button set with name 'Treatment Type' already exists. Please rename the existing set first or provide a new name."
+  "message": "Button set with name 'Treatment Type' already exists. Provide 'newName' to restore with a different name."
+}
+
+// Button name conflict in parent set
+{
+  "success": false,
+  "message": "Button with name 'Cleaning' already exists in set 'Treatment Type'. Cannot restore."
+}
+
+// Parent deleted + name conflict
+{
+  "success": false,
+  "message": "Parent set 'Treatment Type' was also deleted. A set with this name now exists. Provide 'newName' to create a new set with this button."
 }
 ```
 

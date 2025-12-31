@@ -49,6 +49,12 @@ const dropdownSetSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    usedIn: {
+      type: [String],
+      default: [],
+      // Array to track where this dropdown set is being used/updated
+      // Can store element IDs, screen names, module names, or any reference
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
