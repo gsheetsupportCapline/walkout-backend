@@ -2926,6 +2926,193 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Walkouts",
+      "item": [
+        {
+          "name": "Submit Office Section",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const responseData = pm.response.json();",
+                  "    pm.collectionVariables.set('walkout_id', responseData.data._id);",
+                  "    console.log('Walkout ID saved:', responseData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formRefId\": \"FORM_REF_12345\",\n  \"patientCame\": 1,\n  \"postOpZeroProduction\": 2,\n  \"patientType\": 1,\n  \"hasInsurance\": 1,\n  \"insuranceType\": 2,\n  \"insurance\": 1,\n  \"googleReviewRequest\": 1,\n  \"expectedPatientPortionOfficeWO\": 150.50,\n  \"patientPortionCollected\": 140.00,\n  \"differenceInPatientPortion\": -10.50,\n  \"patientPortionPrimaryMode\": 1,\n  \"amountCollectedPrimaryMode\": 140.00,\n  \"reasonLessCollection\": 1,\n  \"ruleEngineRun\": 1,\n  \"ruleEngineError\": 2,\n  \"signedGeneralConsent\": true,\n  \"signedTxPlan\": true,\n  \"xRayPanoAttached\": true,\n  \"prcUpdatedInRouteSheet\": true,\n  \"routeSheet\": true,\n  \"signedTreatmentConsent\": false,\n  \"newOfficeNote\": \"Patient was cooperative during the visit\",\n  \"openTime\": \"2026-01-01T09:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/walkouts/submit-office",
+              "host": ["{{base_url}}"],
+              "path": ["api", "walkouts", "submit-office"]
+            },
+            "description": "Submit office section of walkout form. All authenticated users."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Walkouts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/walkouts?walkoutStatus=office_submitted&limit=50&skip=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "walkouts"],
+              "query": [
+                {
+                  "key": "walkoutStatus",
+                  "value": "office_submitted",
+                  "description": "Filter by status"
+                },
+                {
+                  "key": "userId",
+                  "value": "{{admin_id}}",
+                  "description": "Filter by user",
+                  "disabled": true
+                },
+                {
+                  "key": "formRefId",
+                  "value": "FORM_REF_12345",
+                  "description": "Filter by form reference ID",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Records per page"
+                },
+                {
+                  "key": "skip",
+                  "value": "0",
+                  "description": "Skip records"
+                }
+              ]
+            },
+            "description": "Get all walkouts with optional filters. All authenticated users."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Walkout by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/walkouts/{{walkout_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "walkouts", "{{walkout_id}}"]
+            },
+            "description": "Get walkout details by ID. All authenticated users."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Office Section",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientCame\": 1,\n  \"postOpZeroProduction\": 2,\n  \"patientType\": 1,\n  \"hasInsurance\": 1,\n  \"insuranceType\": 2,\n  \"insurance\": 1,\n  \"googleReviewRequest\": 1,\n  \"expectedPatientPortionOfficeWO\": 150.50,\n  \"patientPortionCollected\": 150.50,\n  \"differenceInPatientPortion\": 0,\n  \"patientPortionPrimaryMode\": 1,\n  \"amountCollectedPrimaryMode\": 150.50,\n  \"ruleEngineRun\": 1,\n  \"ruleEngineError\": 2,\n  \"signedGeneralConsent\": true,\n  \"signedTxPlan\": true,\n  \"xRayPanoAttached\": true,\n  \"prcUpdatedInRouteSheet\": true,\n  \"routeSheet\": true,\n  \"newOfficeNote\": \"Updated: Full payment collected\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/walkouts/{{walkout_id}}/office",
+              "host": ["{{base_url}}"],
+              "path": ["api", "walkouts", "{{walkout_id}}", "office"]
+            },
+            "description": "Update office section. Note: submitToLC3 timestamp will NOT be updated. All authenticated users."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Walkout",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/walkouts/{{walkout_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "walkouts", "{{walkout_id}}"]
+            },
+            "description": "Soft delete walkout. Admin/SuperAdmin only."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -2996,6 +3183,11 @@
     },
     {
       "key": "archive_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "walkout_id",
       "value": "",
       "type": "string"
     }

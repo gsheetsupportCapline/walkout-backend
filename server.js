@@ -27,6 +27,7 @@ app.use("/api/appointments", require("./routes/appointmentRoutes"));
 app.use("/api/provider-schedule", require("./routes/providerScheduleRoutes"));
 app.use("/api/radio-buttons", require("./routes/radioButtonRoutes"));
 app.use("/api/dropdowns", require("./routes/dropdownRoutes"));
+app.use("/api/walkouts", require("./routes/walkoutRoutes"));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
