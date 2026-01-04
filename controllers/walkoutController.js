@@ -1,4 +1,5 @@
 const Walkout = require("../models/Walkout");
+const validateOfficeSection = require("../utils/validateOfficeSection");
 
 // ====================================
 // OFFICE SECTION OPERATIONS
@@ -585,77 +586,40 @@ exports.updateOfficeSection = async (req, res) => {
       });
     }
 
-    // Update all office section fields
-    if (patientCame !== undefined)
-      walkout.officeSection.patientCame = patientCame;
-    if (postOpZeroProduction !== undefined)
-      walkout.officeSection.postOpZeroProduction = postOpZeroProduction;
-    if (patientType !== undefined)
-      walkout.officeSection.patientType = patientType;
-    if (hasInsurance !== undefined)
-      walkout.officeSection.hasInsurance = hasInsurance;
-    if (insuranceType !== undefined)
-      walkout.officeSection.insuranceType = insuranceType;
-    if (insurance !== undefined) walkout.officeSection.insurance = insurance;
-    if (googleReviewRequest !== undefined)
-      walkout.officeSection.googleReviewRequest = googleReviewRequest;
+    // ====================================
+    // VALIDATION LOGIC WITH BATCH ERRORS
+    // ====================================
 
-    if (expectedPatientPortionOfficeWO !== undefined)
-      walkout.officeSection.expectedPatientPortionOfficeWO =
-        expectedPatientPortionOfficeWO;
-    if (patientPortionCollected !== undefined)
-      walkout.officeSection.patientPortionCollected = patientPortionCollected;
-    if (differenceInPatientPortion !== undefined)
-      walkout.officeSection.differenceInPatientPortion =
-        differenceInPatientPortion;
+    const validation = validateOfficeSection(req.body);
 
-    if (patientPortionPrimaryMode !== undefined)
-      walkout.officeSection.patientPortionPrimaryMode =
-        patientPortionPrimaryMode;
-    if (amountCollectedPrimaryMode !== undefined)
-      walkout.officeSection.amountCollectedPrimaryMode =
-        amountCollectedPrimaryMode;
-    if (patientPortionSecondaryMode !== undefined)
-      walkout.officeSection.patientPortionSecondaryMode =
-        patientPortionSecondaryMode;
-    if (amountCollectedSecondaryMode !== undefined)
-      walkout.officeSection.amountCollectedSecondaryMode =
-        amountCollectedSecondaryMode;
-    if (lastFourDigitsCheckForte !== undefined)
-      walkout.officeSection.lastFourDigitsCheckForte = lastFourDigitsCheckForte;
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed. Please fix the following errors:",
+        errorCount: validation.errors.length,
+        errors: validation.errors,
+      });
+    }
 
-    if (reasonLessCollection !== undefined)
-      walkout.officeSection.reasonLessCollection = reasonLessCollection;
-    if (ruleEngineRun !== undefined)
-      walkout.officeSection.ruleEngineRun = ruleEngineRun;
-    if (ruleEngineNotRunReason !== undefined)
-      walkout.officeSection.ruleEngineNotRunReason = ruleEngineNotRunReason;
-    if (ruleEngineError !== undefined)
-      walkout.officeSection.ruleEngineError = ruleEngineError;
-    if (errorFixRemarks !== undefined)
-      walkout.officeSection.errorFixRemarks = errorFixRemarks;
-    if (issuesFixed !== undefined)
-      walkout.officeSection.issuesFixed = issuesFixed;
+    // ====================================
+    // CLEAR AND UPDATE FIELDS
+    // ====================================
 
-    // Boolean fields
-    if (signedGeneralConsent !== undefined)
-      walkout.officeSection.signedGeneralConsent = signedGeneralConsent;
-    if (signedTreatmentConsent !== undefined)
-      walkout.officeSection.signedTreatmentConsent = signedTreatmentConsent;
-    if (preAuthAvailable !== undefined)
-      walkout.officeSection.preAuthAvailable = preAuthAvailable;
-    if (signedTxPlan !== undefined)
-      walkout.officeSection.signedTxPlan = signedTxPlan;
-    if (perioChart !== undefined) walkout.officeSection.perioChart = perioChart;
-    if (nvd !== undefined) walkout.officeSection.nvd = nvd;
-    if (xRayPanoAttached !== undefined)
-      walkout.officeSection.xRayPanoAttached = xRayPanoAttached;
-    if (majorServiceForm !== undefined)
-      walkout.officeSection.majorServiceForm = majorServiceForm;
-    if (routeSheet !== undefined) walkout.officeSection.routeSheet = routeSheet;
-    if (prcUpdatedInRouteSheet !== undefined)
-      walkout.officeSection.prcUpdatedInRouteSheet = prcUpdatedInRouteSheet;
-    if (narrative !== undefined) walkout.officeSection.narrative = narrative;
+    // Clear all office section fields first, keep only metadata and notes
+    const existingNotes = walkout.officeSection.officeHistoricalNotes || [];
+    const submittedBy = walkout.officeSection.officeSubmittedBy;
+    const submittedAt = walkout.officeSection.officeSubmittedAt;
+
+    walkout.officeSection = {
+      officeHistoricalNotes: existingNotes,
+      officeSubmittedBy: submittedBy,
+      officeSubmittedAt: submittedAt,
+    };
+
+    // Set only validated and conditionally required fields
+    Object.keys(validation.cleanData).forEach((key) => {
+      walkout.officeSection[key] = validation.cleanData[key];
+    });
 
     // Add new note if provided
     if (newOfficeNote && newOfficeNote.trim() !== "") {
