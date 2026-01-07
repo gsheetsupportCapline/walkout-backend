@@ -154,7 +154,7 @@ exports.getOfficeAppointments = async (req, res) => {
 };
 
 /**
- * @desc    Get appointments with filters (office name, date range, patient ID)
+ * @desc    Get appointments with filters (office name, date range)
  * @route   GET /api/appointments/list
  * @access  All authenticated users
  */
@@ -164,7 +164,6 @@ exports.getAppointmentsList = async (req, res) => {
       officeName,
       startDate,
       endDate,
-      patientId,
       limit = 100,
       skip = 0,
       sortBy = "dos",
@@ -190,10 +189,6 @@ exports.getAppointmentsList = async (req, res) => {
       if (endDate) query.dos.$lte = endDate;
     }
 
-    if (patientId) {
-      query["patient-id"] = { $regex: patientId, $options: "i" };
-    }
-
     // Build sort
     const sort = {};
     sort[sortBy] = sortOrder === "asc" ? 1 : -1;
@@ -217,7 +212,6 @@ exports.getAppointmentsList = async (req, res) => {
         officeName: officeName,
         startDate: startDate || null,
         endDate: endDate || null,
-        patientId: patientId || null,
       },
       pagination: {
         limit: parseInt(limit),
@@ -231,6 +225,130 @@ exports.getAppointmentsList = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching appointments list",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Get all appointments for a patient in a specific office (no date filter)
+ * @route   GET /api/appointments/by-patient
+ * @access  All authenticated users
+ */
+exports.getAppointmentsByPatient = async (req, res) => {
+  try {
+    const {
+      officeName,
+      patientId,
+      limit = 100,
+      skip = 0,
+      sortBy = "dos",
+      sortOrder = "desc",
+    } = req.query;
+
+    console.log("=== By Patient API Called ===");
+    console.log("Query params received:", {
+      officeName,
+      patientId,
+      limit,
+      skip,
+    });
+
+    // Both office name and patient ID are mandatory
+    if (!officeName || !patientId) {
+      return res.status(400).json({
+        success: false,
+        message: "Both office name and patient ID are required",
+      });
+    }
+
+    // Check if this patient exists in ANY office first
+    const anyPatient = await PatientAppointment.findOne({
+      "patient-id": patientId.trim(),
+    }).select("patient-id patient-name office-name dos");
+
+    console.log(
+      "Patient found anywhere in DB (exact match):",
+      anyPatient
+        ? {
+            patientId: anyPatient["patient-id"],
+            patientName: anyPatient["patient-name"],
+            office: anyPatient["office-name"],
+            dos: anyPatient.dos,
+          }
+        : "NOT FOUND"
+    );
+
+    // Now check specifically for this office
+    const patientInOffice = await PatientAppointment.findOne({
+      "office-name": officeName,
+      "patient-id": patientId.trim(),
+    }).select("patient-id patient-name office-name dos");
+
+    console.log(
+      "Patient in specified office (exact match):",
+      patientInOffice
+        ? {
+            patientId: patientInOffice["patient-id"],
+            patientName: patientInOffice["patient-name"],
+            office: patientInOffice["office-name"],
+            dos: patientInOffice.dos,
+          }
+        : "NOT FOUND"
+    );
+
+    // Build query - exact match for office name and patient ID
+    const query = {
+      "office-name": officeName,
+      "patient-id": patientId.trim(),
+    };
+
+    console.log("Final query for all appointments:", JSON.stringify(query));
+
+    // Build sort
+    const sort = {};
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+
+    // Execute query
+    let appointments = await PatientAppointment.find(query)
+      .sort(sort)
+      .limit(parseInt(limit))
+      .skip(parseInt(skip));
+
+    let total = await PatientAppointment.countDocuments(query);
+
+    console.log(
+      `Final result: Found ${appointments.length} appointments (total: ${total})`
+    );
+    if (appointments.length > 0) {
+      console.log("First appointment:", {
+        patientId: appointments[0]["patient-id"],
+        patientName: appointments[0]["patient-name"],
+        dos: appointments[0].dos,
+        office: appointments[0]["office-name"],
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: appointments.length,
+      total,
+      filters: {
+        officeName,
+        patientId,
+      },
+      pagination: {
+        limit: parseInt(limit),
+        skip: parseInt(skip),
+        hasMore: parseInt(skip) + appointments.length < total,
+      },
+      data: appointments,
+    });
+  } catch (error) {
+    console.error("Error fetching appointments by patient:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching appointments by patient",
       error: error.message,
     });
   }

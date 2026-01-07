@@ -7,6 +7,7 @@ const {
   getAppointmentStats,
   getOfficeAppointments,
   getAppointmentsList,
+  getAppointmentsByPatient,
 } = require("../controllers/appointmentController");
 
 // Manual sync, history, and stats require admin or superAdmin access
@@ -27,7 +28,10 @@ router.get(
 // Get office appointments - accessible to all authenticated users
 router.get("/office/:officeName", protect, getOfficeAppointments);
 
-// Get appointments with filters (for frontend table) - accessible to all authenticated users
+// Get appointments with filters (office name + date range) - accessible to all authenticated users
 router.get("/list", protect, getAppointmentsList);
+
+// Get all appointments for a specific patient in an office - accessible to all authenticated users
+router.get("/by-patient", protect, getAppointmentsByPatient);
 
 module.exports = router;

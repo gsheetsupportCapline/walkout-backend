@@ -1,0 +1,200 @@
+{
+  "info": {
+    "_postman_id": "walkouts-001",
+    "name": "Walkouts",
+    "description": "Walkout form management endpoints - submit, update, get, list, and delete operations with formRefId support",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Submit Office Section",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const response = pm.response.json();",
+              "    if (response.data && response.data._id) {",
+              "        pm.collectionVariables.set('walkout_id', response.data._id);",
+              "        pm.environment.set('walkout_id', response.data._id);",
+              "        console.log('✓ Walkout ID automatically saved');",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"formRefId\": \"FORM-2026-001\",\n  \"officeSection\": {\n    \"officeName\": \"Main Office\",\n    \"dos\": \"2026-01-15\",\n    \"patientName\": \"John Doe\",\n    \"patientCame\": \"yes\",\n    \"postOpZeroProduction\": \"no\",\n    \"appointmentType\": \"New Patient\",\n    \"provider\": \"Dr. Smith\",\n    \"providerProductionAmount\": 500,\n    \"additionalProvider\": \"Dr. Jones\",\n    \"additionalProviderProductionAmount\": 200,\n    \"secondAdditionalProvider\": \"\",\n    \"secondAdditionalProviderProductionAmount\": 0,\n    \"hygienist\": \"Sarah Williams\",\n    \"hygienistProductionAmount\": 150,\n    \"additionalHygienist\": \"\",\n    \"additionalHygienistProductionAmount\": 0,\n    \"officeCollectionsRadio\": \"yes\",\n    \"officeCollectionsAmount\": 850,\n    \"paymentModeRadio\": \"cash\",\n    \"cashAmount\": 850,\n    \"creditCardAmount\": 0,\n    \"checkAmount\": 0,\n    \"financingAmount\": 0,\n    \"otherAmount\": 0,\n    \"otherPaymentMode\": \"\",\n    \"thirdPartyAmount\": 0,\n    \"thirdPartyCompanyName\": \"\",\n    \"otherCredit\": 0,\n    \"insurancePaymentsRadio\": \"no\",\n    \"expectedPatientPortionOfficeWO\": 0,\n    \"insuranceCompany\": \"\",\n    \"insuranceCompany1\": \"\",\n    \"insuranceCompany2\": \"\",\n    \"insuranceCompanyAmount\": 0,\n    \"insuranceCompanyAmount1\": 0,\n    \"insuranceCompanyAmount2\": 0\n  }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/walkouts/submit-office",
+          "host": ["{{base_url}}"],
+          "path": ["api", "walkouts", "submit-office"]
+        },
+        "description": "Submit office section of walkout form. formRefId is optional but recommended for linking frontend form to walkout entry."
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Walkouts",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/walkouts?page=1&limit=20&formRefId=FORM-2026-001&officeName=Main Office&dos=2026-01-15",
+          "host": ["{{base_url}}"],
+          "path": ["api", "walkouts"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Page number for pagination"
+            },
+            {
+              "key": "limit",
+              "value": "20",
+              "description": "Number of items per page"
+            },
+            {
+              "key": "formRefId",
+              "value": "FORM-2026-001",
+              "description": "Filter by form reference ID"
+            },
+            {
+              "key": "officeName",
+              "value": "Main Office",
+              "description": "Filter by office name"
+            },
+            {
+              "key": "dos",
+              "value": "2026-01-15",
+              "description": "Filter by date of service"
+            }
+          ]
+        },
+        "description": "Get all walkouts with optional filters: formRefId, officeName, dos. Supports pagination with page and limit query params."
+      },
+      "response": []
+    },
+    {
+      "name": "Get Walkout by ID",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/walkouts/{{walkout_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "walkouts", "{{walkout_id}}"]
+        },
+        "description": "Get walkout details by ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Update Office Section",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"officeSection\": {\n    \"officeName\": \"Main Office\",\n    \"dos\": \"2026-01-15\",\n    \"patientName\": \"John Doe Updated\",\n    \"patientCame\": \"yes\",\n    \"postOpZeroProduction\": \"no\",\n    \"appointmentType\": \"Follow Up\",\n    \"provider\": \"Dr. Smith\",\n    \"providerProductionAmount\": 600,\n    \"additionalProvider\": \"Dr. Jones\",\n    \"additionalProviderProductionAmount\": 250,\n    \"secondAdditionalProvider\": \"\",\n    \"secondAdditionalProviderProductionAmount\": 0,\n    \"hygienist\": \"Sarah Williams\",\n    \"hygienistProductionAmount\": 150,\n    \"additionalHygienist\": \"\",\n    \"additionalHygienistProductionAmount\": 0,\n    \"officeCollectionsRadio\": \"yes\",\n    \"officeCollectionsAmount\": 1000,\n    \"paymentModeRadio\": \"credit_card\",\n    \"cashAmount\": 0,\n    \"creditCardAmount\": 1000,\n    \"checkAmount\": 0,\n    \"financingAmount\": 0,\n    \"otherAmount\": 0,\n    \"otherPaymentMode\": \"\",\n    \"thirdPartyAmount\": 0,\n    \"thirdPartyCompanyName\": \"\",\n    \"otherCredit\": 0,\n    \"insurancePaymentsRadio\": \"no\",\n    \"expectedPatientPortionOfficeWO\": 0,\n    \"insuranceCompany\": \"\",\n    \"insuranceCompany1\": \"\",\n    \"insuranceCompany2\": \"\",\n    \"insuranceCompanyAmount\": 0,\n    \"insuranceCompanyAmount1\": 0,\n    \"insuranceCompanyAmount2\": 0\n  }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/walkouts/{{walkout_id}}/office",
+          "host": ["{{base_url}}"],
+          "path": ["api", "walkouts", "{{walkout_id}}", "office"]
+        },
+        "description": "Update office section with complete validation. Includes batch error collection and conditional field saving. formRefId cannot be updated after first submission."
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Walkout",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/walkouts/{{walkout_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "walkouts", "{{walkout_id}}"]
+        },
+        "description": "Delete walkout (Admin/SuperAdmin only)"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "walkout_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,812 @@
+{
+  "info": {
+    "_postman_id": "radio-buttons-001",
+    "name": "Radio Buttons",
+    "description": "Radio button management endpoints - CRUD, bulk operations, archive management, and usedIn references",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Button Sets",
+      "item": [
+        {
+          "name": "Get All Button Sets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.length > 0) {",
+                  "        pm.collectionVariables.set('button_set_id', response.data[0]._id);",
+                  "        pm.environment.set('button_set_id', response.data[0]._id);",
+                  "        console.log('✓ Button Set ID automatically saved');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "radio-buttons", "button-sets"]
+            },
+            "description": "Get all button sets (Public - no auth required)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Button Set",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data._id) {",
+                  "        pm.collectionVariables.set('button_set_id', response.data._id);",
+                  "        pm.environment.set('button_set_id', response.data._id);",
+                  "        console.log('✓ Button Set ID automatically saved');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Payment Method\",\n  \"label\": \"Select Payment Method\",\n  \"usedIn\": [\"walkout-office\"],\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "radio-buttons", "button-sets"]
+            },
+            "description": "Create a new button set (Admin/SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Button Set by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}"
+              ]
+            },
+            "description": "Get button set details by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Button Set",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Payment Method Updated\",\n  \"label\": \"Choose Payment Method\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}"
+              ]
+            },
+            "description": "Update button set (Admin/SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Button Set",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}"
+              ]
+            },
+            "description": "Delete button set (Admin/SuperAdmin only) - moves to archive"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Radio Buttons",
+      "item": [
+        {
+          "name": "Get All Buttons in Set",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.length > 0) {",
+                  "        pm.collectionVariables.set('button_id', response.data[0]._id);",
+                  "        pm.environment.set('button_id', response.data[0]._id);",
+                  "        console.log('✓ Button ID automatically saved');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/buttons",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "buttons"
+              ]
+            },
+            "description": "Get all buttons in a button set"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Button",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.buttons && response.data.buttons.length > 0) {",
+                  "        const lastButton = response.data.buttons[response.data.buttons.length - 1];",
+                  "        pm.collectionVariables.set('button_id', lastButton._id);",
+                  "        pm.environment.set('button_id', lastButton._id);",
+                  "        console.log('✓ Button ID automatically saved');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Cash\",\n  \"value\": \"cash\",\n  \"order\": 1,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/buttons",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "buttons"
+              ]
+            },
+            "description": "Create a new button in a set (Admin/SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Button by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/buttons/{{button_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "buttons",
+                "{{button_id}}"
+              ]
+            },
+            "description": "Get button details by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Button",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Cash Payment\",\n  \"value\": \"cash\",\n  \"order\": 1,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/buttons/{{button_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "buttons",
+                "{{button_id}}"
+              ]
+            },
+            "description": "Update button (Admin/SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Button",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/buttons/{{button_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "buttons",
+                "{{button_id}}"
+              ]
+            },
+            "description": "Delete button (Admin/SuperAdmin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bulk Operations",
+      "item": [
+        {
+          "name": "Bulk Create Buttons",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buttons\": [\n    {\n      \"label\": \"Credit Card\",\n      \"value\": \"credit_card\",\n      \"order\": 2,\n      \"isActive\": true\n    },\n    {\n      \"label\": \"Debit Card\",\n      \"value\": \"debit_card\",\n      \"order\": 3,\n      \"isActive\": true\n    },\n    {\n      \"label\": \"Check\",\n      \"value\": \"check\",\n      \"order\": 4,\n      \"isActive\": true\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/buttons/bulk",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "buttons",
+                "bulk"
+              ]
+            },
+            "description": "Bulk create multiple buttons in a set (Admin/SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Update Buttons",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buttons\": [\n    {\n      \"_id\": \"{{button_id}}\",\n      \"label\": \"Cash Updated\",\n      \"isActive\": false\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/buttons/bulk",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "buttons",
+                "bulk"
+              ]
+            },
+            "description": "Bulk update multiple buttons (Admin/SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Delete Buttons",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buttonIds\": [\"{{button_id}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/buttons/bulk",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "buttons",
+                "bulk"
+              ]
+            },
+            "description": "Bulk delete multiple buttons (Admin/SuperAdmin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Archive Operations",
+      "item": [
+        {
+          "name": "Get Archived Button Sets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.length > 0) {",
+                  "        pm.collectionVariables.set('archive_id', response.data[0]._id);",
+                  "        pm.environment.set('archive_id', response.data[0]._id);",
+                  "        console.log('✓ Archive ID automatically saved');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/archives/button-sets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "radio-buttons", "archives", "button-sets"]
+            },
+            "description": "Get all archived button sets (SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Archived Button Set by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/archives/button-sets/{{archive_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "archives",
+                "button-sets",
+                "{{archive_id}}"
+              ]
+            },
+            "description": "Get archived button set by ID (SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Restore Button Set",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/archives/button-sets/{{archive_id}}/restore",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "archives",
+                "button-sets",
+                "{{archive_id}}",
+                "restore"
+              ]
+            },
+            "description": "Restore archived button set (SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Permanently Delete Archived Set",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/archives/button-sets/{{archive_id}}/permanent",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "archives",
+                "button-sets",
+                "{{archive_id}}",
+                "permanent"
+              ]
+            },
+            "description": "Permanently delete archived button set (SuperAdmin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "UsedIn Operations",
+      "item": [
+        {
+          "name": "Add UsedIn References",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"references\": [\"walkout-lc3\", \"walkout-audit\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/used-in/add",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "used-in",
+                "add"
+              ]
+            },
+            "description": "Add references to usedIn array (Admin/SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove UsedIn References",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"references\": [\"walkout-lc3\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/used-in/remove",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "used-in",
+                "remove"
+              ]
+            },
+            "description": "Remove references from usedIn array (Admin/SuperAdmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Replace UsedIn References",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usedIn\": [\"walkout-office\", \"walkout-audit\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/radio-buttons/button-sets/{{button_set_id}}/used-in",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "radio-buttons",
+                "button-sets",
+                "{{button_set_id}}",
+                "used-in"
+              ]
+            },
+            "description": "Replace entire usedIn array (Admin/SuperAdmin only)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "button_set_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "button_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "archive_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
