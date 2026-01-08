@@ -166,6 +166,52 @@
       "response": []
     },
     {
+      "name": "Submit LC3 Section",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    console.log('✓ LC3 Section submitted/updated successfully');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ruleEngine\": {\n    \"fieldsetStatus\": \"complete\",\n    \"didLc3RunRules\": 1,\n    \"ruleEngineUniqueId\": \"RE-2026-12345\",\n    \"reasonForNotRun\": \"\",\n    \"failedRules\": [\n      {\n        \"message\": \"Missing pre-authorization for major service\",\n        \"resolved\": false\n      },\n      {\n        \"message\": \"Patient portion calculation mismatch\",\n        \"resolved\": true\n      }\n    ],\n    \"lastFetchedId\": \"RE-2026-12345\"\n  },\n  \"documentCheck\": {\n    \"fieldsetStatus\": \"complete\",\n    \"signedGeneralConsent\": 1,\n    \"signedTreatmentConsent\": 1,\n    \"preAuthAvailable\": 2,\n    \"signedTxPlan\": 1,\n    \"perioChart\": 3,\n    \"nvd\": 1,\n    \"routeSheet\": 1,\n    \"prcUpdatedInRouteSheet\": 1,\n    \"narrative\": 1\n  },\n  \"attachmentsCheck\": {\n    \"fieldsetStatus\": \"complete\",\n    \"xRayPanoAttached\": 1,\n    \"majorServiceForm\": 2,\n    \"bwPaAttached\": 1,\n    \"fmxAttached\": 3,\n    \"cephAttached\": 3\n  },\n  \"patientPortionCheck\": {\n    \"fieldsetStatus\": \"complete\",\n    \"expectedPPInLC3\": 250.50,\n    \"differenceInPPWalkoutVsLC3\": 10.50,\n    \"isPPVerified\": 1,\n    \"isPPUpdatedInLC3\": 1\n  },\n  \"productionDetails\": {\n    \"fieldsetStatus\": \"complete\",\n    \"productionInLC3\": 850.00,\n    \"differenceInProdWalkoutVsLC3\": 0,\n    \"didLc3TakeApproval\": 2,\n    \"reasonsToHold\": [1, 3, 5],\n    \"wasWalkoutHoldInLC3\": 2,\n    \"wasEligibilityWrong\": 2,\n    \"wereAllNotesReadable\": 1,\n    \"wereExtensionsHandledCorrectly\": 1\n  },\n  \"providerNotes\": {\n    \"fieldsetStatus\": \"complete\",\n    \"isNoteValidated\": 1,\n    \"numberOfElements\": 4,\n    \"providerNote\": \"Patient responded well to treatment. Follow-up in 2 weeks.\",\n    \"hygienistNote\": \"Oral hygiene improved since last visit. Continue current routine.\"\n  },\n  \"lc3Remarks\": \"All documents verified and processed. Ready for audit.\",\n  \"onHoldNote\": \"Waiting for insurance pre-authorization confirmation.\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/walkouts/{{walkout_id}}/lc3",
+          "host": ["{{base_url}}"],
+          "path": ["api", "walkouts", "{{walkout_id}}", "lc3"]
+        },
+        "description": "Submit or update LC3 section. All fieldsets are optional and will be merged with existing data. Office section must be submitted first. Use onHoldNote to add a new note to the onHoldNotes array."
+      },
+      "response": []
+    },
+    {
       "name": "Delete Walkout",
       "request": {
         "auth": {

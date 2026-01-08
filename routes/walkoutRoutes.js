@@ -6,6 +6,7 @@ const {
   getAllWalkouts,
   getWalkoutById,
   updateOfficeSection,
+  submitLc3Section,
   deleteWalkout,
 } = require("../controllers/walkoutController");
 
@@ -24,6 +25,9 @@ router.get("/:id", protect, getWalkoutById);
 
 // Update office section - All authenticated users
 router.put("/:id/office", protect, updateOfficeSection);
+
+// Submit/Update LC3 section - All authenticated users
+router.put("/:id/lc3", protect, submitLc3Section);
 
 // Delete walkout - Admin/SuperAdmin only
 router.delete(

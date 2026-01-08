@@ -659,6 +659,149 @@ exports.updateOfficeSection = async (req, res) => {
   }
 };
 
+// ====================================
+// LC3 SECTION OPERATIONS
+// ====================================
+
+// Submit/Update LC3 Section
+exports.submitLc3Section = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // Find the walkout
+    const walkout = await Walkout.findById(id);
+
+    if (!walkout) {
+      return res.status(404).json({
+        success: false,
+        message: "Walkout not found",
+      });
+    }
+
+    // Validate that office section has been submitted
+    if (!walkout.officeSection || !walkout.officeSection.officeSubmittedAt) {
+      return res.status(400).json({
+        success: false,
+        message: "Office section must be submitted before LC3 section",
+      });
+    }
+
+    // Initialize lc3Section if it doesn't exist
+    if (!walkout.lc3Section) {
+      walkout.lc3Section = {};
+    }
+
+    // Extract LC3 data from request body
+    const {
+      ruleEngine,
+      documentCheck,
+      attachmentsCheck,
+      patientPortionCheck,
+      productionDetails,
+      providerNotes,
+      lc3Remarks,
+      onHoldNote, // Single note to add to onHoldNotes array
+    } = req.body;
+
+    // Update Rule Engine if provided
+    if (ruleEngine) {
+      walkout.lc3Section.ruleEngine = {
+        ...walkout.lc3Section.ruleEngine,
+        ...ruleEngine,
+      };
+    }
+
+    // Update Document Check if provided
+    if (documentCheck) {
+      walkout.lc3Section.documentCheck = {
+        ...walkout.lc3Section.documentCheck,
+        ...documentCheck,
+      };
+    }
+
+    // Update Attachments Check if provided
+    if (attachmentsCheck) {
+      walkout.lc3Section.attachmentsCheck = {
+        ...walkout.lc3Section.attachmentsCheck,
+        ...attachmentsCheck,
+      };
+    }
+
+    // Update Patient Portion Check if provided
+    if (patientPortionCheck) {
+      walkout.lc3Section.patientPortionCheck = {
+        ...walkout.lc3Section.patientPortionCheck,
+        ...patientPortionCheck,
+      };
+    }
+
+    // Update Production Details if provided
+    if (productionDetails) {
+      walkout.lc3Section.productionDetails = {
+        ...walkout.lc3Section.productionDetails,
+        ...productionDetails,
+      };
+    }
+
+    // Update Provider Notes if provided
+    if (providerNotes) {
+      walkout.lc3Section.providerNotes = {
+        ...walkout.lc3Section.providerNotes,
+        ...providerNotes,
+      };
+    }
+
+    // Update LC3 Remarks if provided
+    if (lc3Remarks !== undefined) {
+      walkout.lc3Section.lc3Remarks = lc3Remarks;
+    }
+
+    // Add on-hold note if provided
+    if (onHoldNote) {
+      if (!walkout.lc3Section.onHoldNotes) {
+        walkout.lc3Section.onHoldNotes = [];
+      }
+      walkout.lc3Section.onHoldNotes.push({
+        note: onHoldNote,
+        addedBy: userId,
+        addedAt: new Date(),
+      });
+    }
+
+    // Update submission metadata
+    const isFirstSubmit = !walkout.lc3Section.lc3SubmittedAt;
+
+    if (isFirstSubmit) {
+      walkout.lc3Section.lc3SubmittedAt = new Date();
+      walkout.lc3Section.lc3SubmittedBy = userId;
+      walkout.walkoutStatus = "lc3_submitted";
+    }
+
+    walkout.lc3Section.lc3LastUpdatedAt = new Date();
+    walkout.lc3Section.lc3LastUpdatedBy = userId;
+    walkout.lastUpdateOn = new Date();
+
+    // Save the walkout
+    await walkout.save();
+
+    res.status(200).json({
+      success: true,
+      message: isFirstSubmit
+        ? "LC3 section submitted successfully"
+        : "LC3 section updated successfully",
+      data: walkout,
+    });
+  } catch (error) {
+    console.error("Error submitting/updating LC3 section:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error submitting/updating LC3 section",
+      error: error.message,
+    });
+  }
+};
+
 // Delete walkout (soft delete)
 exports.deleteWalkout = async (req, res) => {
   try {
