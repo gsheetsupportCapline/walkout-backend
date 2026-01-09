@@ -1,5 +1,56 @@
 const mongoose = require("mongoose");
 
+// ====================================
+// APPOINTMENT INFORMATION SCHEMA
+// ====================================
+const appointmentInfoSchema = new mongoose.Schema(
+  {
+    patientId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    dateOfService: {
+      type: Date,
+      required: true,
+    },
+    officeName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+// ====================================
+// OFFICE WALKOUT SNIP SCHEMA
+// ====================================
+const officeWalkoutSnipSchema = new mongoose.Schema(
+  {
+    imageId: {
+      type: String,
+      trim: true,
+    },
+    fileName: {
+      type: String,
+      trim: true,
+    },
+    uploadedAt: {
+      type: Date,
+    },
+    extractedData: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+// ====================================
+// OFFICE SECTION SCHEMAS
+// ====================================
+
 // Office Historical Note subdocument
 const officeHistoricalNoteSchema = new mongoose.Schema(
   {
@@ -545,6 +596,18 @@ const walkoutSchema = new mongoose.Schema(
       type: String,
       trim: true,
       // Will be set on first office section submit
+    },
+
+    // Appointment Information (NEW)
+    appointmentInfo: {
+      type: appointmentInfoSchema,
+      required: true,
+    },
+
+    // Office Walkout Snip (NEW)
+    officeWalkoutSnip: {
+      type: officeWalkoutSnipSchema,
+      default: {},
     },
 
     // Timestamps

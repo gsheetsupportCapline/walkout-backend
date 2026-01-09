@@ -1,5 +1,13 @@
 const Walkout = require("../models/Walkout");
 const validateOfficeSection = require("../utils/validateOfficeSection");
+const { uploadToGoogleDrive } = require("../utils/driveUpload");
+
+// Helper function to convert FormData string values to numbers
+const toNumber = (value) => {
+  if (value === undefined || value === null || value === "") return value;
+  const num = Number(value);
+  return isNaN(num) ? value : num;
+};
 
 // ====================================
 // OFFICE SECTION OPERATIONS
@@ -10,6 +18,8 @@ exports.submitOfficeSection = async (req, res) => {
   try {
     const {
       formRefId,
+      appointmentInfo, // NEW: { patientId, dateOfService, officeName }
+      extractedData, // NEW: Optional extracted data from image
       patientCame,
       postOpZeroProduction,
       patientType,
@@ -47,14 +57,90 @@ exports.submitOfficeSection = async (req, res) => {
     } = req.body;
 
     // ====================================
+    // VALIDATION: Appointment Info
+    // ====================================
+    if (!appointmentInfo) {
+      return res.status(400).json({
+        success: false,
+        message: "appointmentInfo is required",
+        field: "appointmentInfo",
+        tip: 'Send appointmentInfo as JSON string: {"patientId":"PAT-001","dateOfService":"2026-01-15","officeName":"Main Office"}',
+      });
+    }
+
+    // Parse appointmentInfo if it's a string (from FormData)
+    let parsedAppointmentInfo;
+    try {
+      parsedAppointmentInfo =
+        typeof appointmentInfo === "string"
+          ? JSON.parse(appointmentInfo)
+          : appointmentInfo;
+    } catch (parseError) {
+      return res.status(400).json({
+        success: false,
+        message: "appointmentInfo must be a valid JSON string",
+        field: "appointmentInfo",
+        receivedValue: appointmentInfo,
+        error: parseError.message,
+      });
+    }
+
+    const { patientId, dateOfService, officeName } = parsedAppointmentInfo;
+
+    if (!patientId || !dateOfService || !officeName) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "appointmentInfo must contain patientId, dateOfService, and officeName",
+        field: "appointmentInfo",
+        receivedValue: parsedAppointmentInfo,
+      });
+    }
+
+    // ====================================
     // VALIDATION LOGIC
     // ====================================
 
+    // Convert string values to numbers (FormData sends everything as strings)
+    const patientCameNum = toNumber(patientCame);
+    const postOpZeroProductionNum = toNumber(postOpZeroProduction);
+    const patientTypeNum = toNumber(patientType);
+    const hasInsuranceNum = toNumber(hasInsurance);
+    const insuranceTypeNum = toNumber(insuranceType);
+    const googleReviewRequestNum = toNumber(googleReviewRequest);
+    const expectedPatientPortionOfficeWONum = toNumber(
+      expectedPatientPortionOfficeWO
+    );
+    const patientPortionCollectedNum = toNumber(patientPortionCollected);
+    const differenceInPatientPortionNum = toNumber(differenceInPatientPortion);
+    const patientPortionPrimaryModeNum = toNumber(patientPortionPrimaryMode);
+    const amountCollectedPrimaryModeNum = toNumber(amountCollectedPrimaryMode);
+    const patientPortionSecondaryModeNum = toNumber(
+      patientPortionSecondaryMode
+    );
+    const amountCollectedSecondaryModeNum = toNumber(
+      amountCollectedSecondaryMode
+    );
+    const ruleEngineRunNum = toNumber(ruleEngineRun);
+    const ruleEngineErrorNum = toNumber(ruleEngineError);
+    const issuesFixedNum = toNumber(issuesFixed);
+    const signedGeneralConsentNum = toNumber(signedGeneralConsent);
+    const signedTreatmentConsentNum = toNumber(signedTreatmentConsent);
+    const preAuthAvailableNum = toNumber(preAuthAvailable);
+    const signedTxPlanNum = toNumber(signedTxPlan);
+    const perioChartNum = toNumber(perioChart);
+    const nvdNum = toNumber(nvd);
+    const xRayPanoAttachedNum = toNumber(xRayPanoAttached);
+    const majorServiceFormNum = toNumber(majorServiceForm);
+    const routeSheetNum = toNumber(routeSheet);
+    const prcUpdatedInRouteSheetNum = toNumber(prcUpdatedInRouteSheet);
+
     // Level 1: patientCame is always mandatory
     if (
-      patientCame === undefined ||
-      patientCame === null ||
-      patientCame === ""
+      patientCameNum === undefined ||
+      patientCameNum === null ||
+      patientCameNum === "" ||
+      isNaN(patientCameNum)
     ) {
       return res.status(400).json({
         success: false,
@@ -67,10 +153,7 @@ exports.submitOfficeSection = async (req, res) => {
     }
 
     // Validate patientCame is a valid number
-    if (
-      typeof patientCame !== "number" ||
-      (patientCame !== 1 && patientCame !== 2)
-    ) {
+    if (patientCameNum !== 1 && patientCameNum !== 2) {
       return res.status(400).json({
         success: false,
         message: "patientCame must be either 1 (Yes) or 2 (No)",
@@ -81,58 +164,61 @@ exports.submitOfficeSection = async (req, res) => {
     }
 
     const officeData = {
-      patientCame,
+      patientCame: patientCameNum,
     };
 
     let walkoutStatus = "draft";
     let submitToLC3Time = null;
 
     // If patient didn't come (patientCame = 2)
-    if (patientCame === 2) {
+    if (patientCameNum === 2) {
       walkoutStatus = "patient_not_came";
       // Only save patientCame, rest will be undefined/default
-    } else if (patientCame === 1) {
+    } else if (patientCameNum === 1) {
       // Patient came - validate other fields
 
       // Level 2: postOpZeroProduction is mandatory
-      if (postOpZeroProduction === undefined || postOpZeroProduction === null) {
+      if (
+        postOpZeroProductionNum === undefined ||
+        postOpZeroProductionNum === null
+      ) {
         return res.status(400).json({
           success: false,
           message: "postOpZeroProduction is required when patient came",
         });
       }
-      officeData.postOpZeroProduction = postOpZeroProduction;
+      officeData.postOpZeroProduction = postOpZeroProductionNum;
 
       // Level 3: patientType is mandatory
-      if (patientType === undefined || patientType === null) {
+      if (patientTypeNum === undefined || patientTypeNum === null) {
         return res.status(400).json({
           success: false,
           message: "patientType is required when patient came",
         });
       }
-      officeData.patientType = patientType;
+      officeData.patientType = patientTypeNum;
 
       // Level 4: hasInsurance is mandatory
-      if (hasInsurance === undefined || hasInsurance === null) {
+      if (hasInsuranceNum === undefined || hasInsuranceNum === null) {
         return res.status(400).json({
           success: false,
           message: "hasInsurance is required when patient came",
         });
       }
-      officeData.hasInsurance = hasInsurance;
+      officeData.hasInsurance = hasInsuranceNum;
 
       // Level 5: insuranceType (conditional)
-      if (hasInsurance === 1) {
-        if (insuranceType === undefined || insuranceType === null) {
+      if (hasInsuranceNum === 1) {
+        if (insuranceTypeNum === undefined || insuranceTypeNum === null) {
           return res.status(400).json({
             success: false,
             message: "insuranceType is required when patient has insurance",
           });
         }
-        officeData.insuranceType = insuranceType;
+        officeData.insuranceType = insuranceTypeNum;
 
         // Level 5b: insurance (conditional based on insuranceType)
-        if (insuranceType === 2 || insuranceType === 6) {
+        if (insuranceTypeNum === 2 || insuranceTypeNum === 6) {
           if (insurance === undefined || insurance === null) {
             return res.status(400).json({
               success: false,
@@ -145,22 +231,26 @@ exports.submitOfficeSection = async (req, res) => {
       }
 
       // Level 6: googleReviewRequest is mandatory
-      if (googleReviewRequest === undefined || googleReviewRequest === null) {
+      if (
+        googleReviewRequestNum === undefined ||
+        googleReviewRequestNum === null
+      ) {
         return res.status(400).json({
           success: false,
           message: "googleReviewRequest is required",
         });
       }
-      officeData.googleReviewRequest = googleReviewRequest;
+      officeData.googleReviewRequest = googleReviewRequestNum;
 
       // Check if postOpZeroProduction = 1 (skip payment/document fields)
-      if (postOpZeroProduction !== 1) {
+      if (postOpZeroProductionNum !== 1) {
         // Level 7: expectedPatientPortionOfficeWO is mandatory (can be 0)
         // Important: 0 is a valid value, so we only check for undefined/null/empty string
         if (
-          expectedPatientPortionOfficeWO === undefined ||
-          expectedPatientPortionOfficeWO === null ||
-          expectedPatientPortionOfficeWO === ""
+          expectedPatientPortionOfficeWONum === undefined ||
+          expectedPatientPortionOfficeWONum === null ||
+          (expectedPatientPortionOfficeWO === "" &&
+            expectedPatientPortionOfficeWO !== 0)
         ) {
           return res.status(400).json({
             success: false,
@@ -170,10 +260,7 @@ exports.submitOfficeSection = async (req, res) => {
         }
 
         // Validate it's a valid number
-        if (
-          typeof expectedPatientPortionOfficeWO !== "number" ||
-          isNaN(expectedPatientPortionOfficeWO)
-        ) {
+        if (isNaN(expectedPatientPortionOfficeWONum)) {
           return res.status(400).json({
             success: false,
             message: "expectedPatientPortionOfficeWO must be a valid number",
@@ -183,76 +270,77 @@ exports.submitOfficeSection = async (req, res) => {
         }
 
         officeData.expectedPatientPortionOfficeWO =
-          expectedPatientPortionOfficeWO;
+          expectedPatientPortionOfficeWONum;
 
-        // Level 8: patientPortionCollected (not mandatory)
+        // Level 8: patientPortionCollected (not mandatory, but 0 is valid)
         if (
-          patientPortionCollected !== undefined &&
-          patientPortionCollected !== null &&
-          patientPortionCollected !== ""
+          patientPortionCollectedNum !== undefined &&
+          patientPortionCollectedNum !== null
         ) {
-          officeData.patientPortionCollected = patientPortionCollected;
+          officeData.patientPortionCollected = patientPortionCollectedNum;
         }
 
-        // Level 9: differenceInPatientPortion (not mandatory)
+        // Level 9: differenceInPatientPortion (not mandatory, but 0 is valid)
         if (
-          differenceInPatientPortion !== undefined &&
-          differenceInPatientPortion !== null &&
-          differenceInPatientPortion !== ""
+          differenceInPatientPortionNum !== undefined &&
+          differenceInPatientPortionNum !== null
         ) {
-          officeData.differenceInPatientPortion = differenceInPatientPortion;
+          officeData.differenceInPatientPortion = differenceInPatientPortionNum;
         }
 
         // Level 10: patientPortionPrimaryMode and amount
         if (
-          patientPortionPrimaryMode !== undefined &&
-          patientPortionPrimaryMode !== null &&
+          patientPortionPrimaryModeNum !== undefined &&
+          patientPortionPrimaryModeNum !== null &&
           patientPortionPrimaryMode !== ""
         ) {
-          officeData.patientPortionPrimaryMode = patientPortionPrimaryMode;
+          officeData.patientPortionPrimaryMode = patientPortionPrimaryModeNum;
 
-          // If primary mode has value, amount is mandatory
+          // If primary mode has value, amount is mandatory (0 is valid)
           if (
-            amountCollectedPrimaryMode === undefined ||
-            amountCollectedPrimaryMode === null ||
-            amountCollectedPrimaryMode === ""
+            amountCollectedPrimaryModeNum === undefined ||
+            amountCollectedPrimaryModeNum === null ||
+            (amountCollectedPrimaryMode === "" &&
+              amountCollectedPrimaryMode !== 0)
           ) {
             return res.status(400).json({
               success: false,
               message:
-                "amountCollectedPrimaryMode is required when patientPortionPrimaryMode is provided",
+                "amountCollectedPrimaryMode is required when patientPortionPrimaryMode is provided (0 is valid)",
             });
           }
-          officeData.amountCollectedPrimaryMode = amountCollectedPrimaryMode;
+          officeData.amountCollectedPrimaryMode = amountCollectedPrimaryModeNum;
         }
 
         // Level 11: patientPortionSecondaryMode and amount
         if (
-          patientPortionSecondaryMode !== undefined &&
-          patientPortionSecondaryMode !== null &&
+          patientPortionSecondaryModeNum !== undefined &&
+          patientPortionSecondaryModeNum !== null &&
           patientPortionSecondaryMode !== ""
         ) {
-          officeData.patientPortionSecondaryMode = patientPortionSecondaryMode;
+          officeData.patientPortionSecondaryMode =
+            patientPortionSecondaryModeNum;
 
-          // If secondary mode has value, amount is mandatory
+          // If secondary mode has value, amount is mandatory (0 is valid)
           if (
-            amountCollectedSecondaryMode === undefined ||
-            amountCollectedSecondaryMode === null ||
-            amountCollectedSecondaryMode === ""
+            amountCollectedSecondaryModeNum === undefined ||
+            amountCollectedSecondaryModeNum === null ||
+            (amountCollectedSecondaryMode === "" &&
+              amountCollectedSecondaryMode !== 0)
           ) {
             return res.status(400).json({
               success: false,
               message:
-                "amountCollectedSecondaryMode is required when patientPortionSecondaryMode is provided",
+                "amountCollectedSecondaryMode is required when patientPortionSecondaryMode is provided (0 is valid)",
             });
           }
           officeData.amountCollectedSecondaryMode =
-            amountCollectedSecondaryMode;
+            amountCollectedSecondaryModeNum;
         }
 
         // Level 12: lastFourDigitsCheckForte (if mode = 4)
-        const isPrimaryMode4 = patientPortionPrimaryMode === 4;
-        const isSecondaryMode4 = patientPortionSecondaryMode === 4;
+        const isPrimaryMode4 = patientPortionPrimaryModeNum === 4;
+        const isSecondaryMode4 = patientPortionSecondaryModeNum === 4;
 
         if (isPrimaryMode4 || isSecondaryMode4) {
           if (
@@ -271,8 +359,8 @@ exports.submitOfficeSection = async (req, res) => {
 
         // Level 13: reasonLessCollection (if difference is negative)
         if (
-          differenceInPatientPortion !== undefined &&
-          differenceInPatientPortion < 0
+          differenceInPatientPortionNum !== undefined &&
+          differenceInPatientPortionNum < 0
         ) {
           if (
             reasonLessCollection === undefined ||
@@ -289,27 +377,27 @@ exports.submitOfficeSection = async (req, res) => {
         }
 
         // Level 14: ruleEngineRun is mandatory
-        if (ruleEngineRun === undefined || ruleEngineRun === null) {
+        if (ruleEngineRunNum === undefined || ruleEngineRunNum === null) {
           return res.status(400).json({
             success: false,
             message: "ruleEngineRun is required",
           });
         }
-        officeData.ruleEngineRun = ruleEngineRun;
+        officeData.ruleEngineRun = ruleEngineRunNum;
 
         // Level 15: ruleEngineError or ruleEngineNotRunReason
-        if (ruleEngineRun === 1) {
+        if (ruleEngineRunNum === 1) {
           // ruleEngineError is mandatory
-          if (ruleEngineError === undefined || ruleEngineError === null) {
+          if (ruleEngineErrorNum === undefined || ruleEngineErrorNum === null) {
             return res.status(400).json({
               success: false,
               message: "ruleEngineError is required when rule engine ran",
             });
           }
-          officeData.ruleEngineError = ruleEngineError;
+          officeData.ruleEngineError = ruleEngineErrorNum;
 
           // Level 15b: If ruleEngineError = 1, errorFixRemarks and issuesFixed mandatory
-          if (ruleEngineError === 1) {
+          if (ruleEngineErrorNum === 1) {
             if (!errorFixRemarks || errorFixRemarks.trim() === "") {
               return res.status(400).json({
                 success: false,
@@ -317,16 +405,16 @@ exports.submitOfficeSection = async (req, res) => {
                   "errorFixRemarks is required when ruleEngineError is 1",
               });
             }
-            if (issuesFixed === undefined || issuesFixed === null) {
+            if (issuesFixedNum === undefined || issuesFixedNum === null) {
               return res.status(400).json({
                 success: false,
                 message: "issuesFixed is required when ruleEngineError is 1",
               });
             }
             officeData.errorFixRemarks = errorFixRemarks;
-            officeData.issuesFixed = issuesFixed;
+            officeData.issuesFixed = issuesFixedNum;
           }
-        } else if (ruleEngineRun === 2) {
+        } else if (ruleEngineRunNum === 2) {
           // ruleEngineNotRunReason is mandatory
           if (
             ruleEngineNotRunReason === undefined ||
@@ -343,60 +431,60 @@ exports.submitOfficeSection = async (req, res) => {
 
         // Level 16: Boolean fields - mandatory ones
         if (
-          signedGeneralConsent === undefined ||
-          signedGeneralConsent === null
+          signedGeneralConsentNum === undefined ||
+          signedGeneralConsentNum === null
         ) {
           return res.status(400).json({
             success: false,
             message: "signedGeneralConsent is required",
           });
         }
-        officeData.signedGeneralConsent = signedGeneralConsent;
+        officeData.signedGeneralConsent = signedGeneralConsentNum;
 
-        if (signedTxPlan === undefined || signedTxPlan === null) {
+        if (signedTxPlanNum === undefined || signedTxPlanNum === null) {
           return res.status(400).json({
             success: false,
             message: "signedTxPlan is required",
           });
         }
-        officeData.signedTxPlan = signedTxPlan;
+        officeData.signedTxPlan = signedTxPlanNum;
 
-        if (xRayPanoAttached === undefined || xRayPanoAttached === null) {
+        if (xRayPanoAttachedNum === undefined || xRayPanoAttachedNum === null) {
           return res.status(400).json({
             success: false,
             message: "xRayPanoAttached is required",
           });
         }
-        officeData.xRayPanoAttached = xRayPanoAttached;
+        officeData.xRayPanoAttached = xRayPanoAttachedNum;
 
         if (
-          prcUpdatedInRouteSheet === undefined ||
-          prcUpdatedInRouteSheet === null
+          prcUpdatedInRouteSheetNum === undefined ||
+          prcUpdatedInRouteSheetNum === null
         ) {
           return res.status(400).json({
             success: false,
             message: "prcUpdatedInRouteSheet is required",
           });
         }
-        officeData.prcUpdatedInRouteSheet = prcUpdatedInRouteSheet;
+        officeData.prcUpdatedInRouteSheet = prcUpdatedInRouteSheetNum;
 
-        if (routeSheet === undefined || routeSheet === null) {
+        if (routeSheetNum === undefined || routeSheetNum === null) {
           return res.status(400).json({
             success: false,
             message: "routeSheet is required",
           });
         }
-        officeData.routeSheet = routeSheet;
+        officeData.routeSheet = routeSheetNum;
 
         // Optional boolean fields
-        if (signedTreatmentConsent !== undefined)
-          officeData.signedTreatmentConsent = signedTreatmentConsent;
-        if (preAuthAvailable !== undefined)
-          officeData.preAuthAvailable = preAuthAvailable;
-        if (perioChart !== undefined) officeData.perioChart = perioChart;
-        if (nvd !== undefined) officeData.nvd = nvd;
-        if (majorServiceForm !== undefined)
-          officeData.majorServiceForm = majorServiceForm;
+        if (signedTreatmentConsentNum !== undefined)
+          officeData.signedTreatmentConsent = signedTreatmentConsentNum;
+        if (preAuthAvailableNum !== undefined)
+          officeData.preAuthAvailable = preAuthAvailableNum;
+        if (perioChartNum !== undefined) officeData.perioChart = perioChartNum;
+        if (nvdNum !== undefined) officeData.nvd = nvdNum;
+        if (majorServiceFormNum !== undefined)
+          officeData.majorServiceForm = majorServiceFormNum;
         if (narrative !== undefined) officeData.narrative = narrative;
       }
 
@@ -430,10 +518,53 @@ exports.submitOfficeSection = async (req, res) => {
       });
     }
 
+    // ====================================
+    // IMAGE UPLOAD TO GOOGLE DRIVE
+    // ====================================
+    let officeWalkoutSnipData = {};
+
+    if (req.file) {
+      try {
+        console.log("📤 Uploading office walkout snip to Google Drive...");
+
+        const uploadResult = await uploadToGoogleDrive(
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype,
+          parsedAppointmentInfo
+        );
+
+        officeWalkoutSnipData = {
+          imageId: uploadResult.fileId,
+          fileName: uploadResult.fileName,
+          uploadedAt: uploadResult.uploadedAt,
+          extractedData: extractedData || undefined,
+        };
+
+        console.log(
+          `✅ Image uploaded successfully. File ID: ${uploadResult.fileId}`
+        );
+      } catch (uploadError) {
+        console.error("❌ Image upload failed:", uploadError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload image to Google Drive",
+          error: uploadError.message,
+        });
+      }
+    } else if (extractedData) {
+      // If no image but extractedData is provided
+      officeWalkoutSnipData = {
+        extractedData: extractedData,
+      };
+    }
+
     // Create walkout document
     const walkout = await Walkout.create({
       userId: req.user._id,
       formRefId: formRefId || undefined, // Set only if provided, immutable after this
+      appointmentInfo: parsedAppointmentInfo, // NEW: Required appointment info
+      officeWalkoutSnip: officeWalkoutSnipData, // NEW: Image data (if uploaded)
       openTime: openTime || new Date(),
       submitToLC3: submitToLC3Time,
       lastUpdateOn: new Date(),
@@ -541,7 +672,52 @@ exports.getWalkoutById = async (req, res) => {
 exports.updateOfficeSection = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Convert FormData string values to proper types
+    const convertedBody = {
+      ...req.body,
+      patientCame: toNumber(req.body.patientCame),
+      postOpZeroProduction: toNumber(req.body.postOpZeroProduction),
+      patientType: req.body.patientType,
+      hasInsurance: req.body.hasInsurance,
+      insuranceType: req.body.insuranceType,
+      insurance: req.body.insurance,
+      googleReviewRequest: req.body.googleReviewRequest,
+      expectedPatientPortionOfficeWO: toNumber(
+        req.body.expectedPatientPortionOfficeWO
+      ),
+      patientPortionCollected: toNumber(req.body.patientPortionCollected),
+      differenceInPatientPortion: toNumber(req.body.differenceInPatientPortion),
+      patientPortionPrimaryMode: req.body.patientPortionPrimaryMode,
+      amountCollectedPrimaryMode: toNumber(req.body.amountCollectedPrimaryMode),
+      patientPortionSecondaryMode: req.body.patientPortionSecondaryMode,
+      amountCollectedSecondaryMode: toNumber(
+        req.body.amountCollectedSecondaryMode
+      ),
+      lastFourDigitsCheckForte: req.body.lastFourDigitsCheckForte,
+      reasonLessCollection: req.body.reasonLessCollection,
+      ruleEngineRun: req.body.ruleEngineRun,
+      ruleEngineNotRunReason: req.body.ruleEngineNotRunReason,
+      ruleEngineError: req.body.ruleEngineError,
+      errorFixRemarks: req.body.errorFixRemarks,
+      issuesFixed: req.body.issuesFixed,
+      signedGeneralConsent: req.body.signedGeneralConsent,
+      signedTreatmentConsent: req.body.signedTreatmentConsent,
+      preAuthAvailable: req.body.preAuthAvailable,
+      signedTxPlan: req.body.signedTxPlan,
+      perioChart: req.body.perioChart,
+      nvd: req.body.nvd,
+      xRayPanoAttached: req.body.xRayPanoAttached,
+      majorServiceForm: req.body.majorServiceForm,
+      routeSheet: req.body.routeSheet,
+      prcUpdatedInRouteSheet: req.body.prcUpdatedInRouteSheet,
+      narrative: req.body.narrative,
+      newOfficeNote: req.body.newOfficeNote,
+      extractedData: req.body.extractedData,
+    };
+
     const {
+      extractedData,
       patientCame,
       postOpZeroProduction,
       patientType,
@@ -575,7 +751,7 @@ exports.updateOfficeSection = async (req, res) => {
       prcUpdatedInRouteSheet,
       narrative,
       newOfficeNote,
-    } = req.body;
+    } = convertedBody;
 
     const walkout = await Walkout.findById(id);
 
@@ -586,11 +762,19 @@ exports.updateOfficeSection = async (req, res) => {
       });
     }
 
+    // DEBUG: Check what's in req.body and req.file
+    console.log("=== UPDATE OFFICE SECTION DEBUG ===");
+    console.log("req.file:", req.file ? "File present" : "No file");
+    console.log("req.body keys:", Object.keys(req.body));
+    console.log("patientCame value:", req.body.patientCame);
+    console.log("patientCame type:", typeof req.body.patientCame);
+    console.log("===================================");
+
     // ====================================
     // VALIDATION LOGIC WITH BATCH ERRORS
     // ====================================
 
-    const validation = validateOfficeSection(req.body);
+    const validation = validateOfficeSection(convertedBody);
 
     if (!validation.isValid) {
       return res.status(400).json({
@@ -632,6 +816,44 @@ exports.updateOfficeSection = async (req, res) => {
 
     // IMPORTANT: formRefId is immutable - do NOT update it
     // submitToLC3 is also immutable - do NOT update it
+    // appointmentInfo is also immutable - do NOT update it
+
+    // ====================================
+    // IMAGE UPLOAD TO GOOGLE DRIVE (if new image provided)
+    // ====================================
+    if (req.file) {
+      try {
+        console.log("📤 Uploading new office walkout snip to Google Drive...");
+
+        const uploadResult = await uploadToGoogleDrive(
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype,
+          walkout.appointmentInfo
+        );
+
+        // Update image data
+        walkout.officeWalkoutSnip.imageId = uploadResult.fileId;
+        walkout.officeWalkoutSnip.fileName = uploadResult.fileName;
+        walkout.officeWalkoutSnip.uploadedAt = uploadResult.uploadedAt;
+
+        console.log(
+          `✅ Image updated successfully. File ID: ${uploadResult.fileId}`
+        );
+      } catch (uploadError) {
+        console.error("❌ Image upload failed:", uploadError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload image to Google Drive",
+          error: uploadError.message,
+        });
+      }
+    }
+
+    // Update extractedData if provided (even without new image)
+    if (extractedData !== undefined) {
+      walkout.officeWalkoutSnip.extractedData = extractedData;
+    }
 
     // Update metadata
     walkout.officeSection.officeLastUpdatedAt = new Date();
@@ -826,6 +1048,95 @@ exports.deleteWalkout = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error deleting walkout",
+      error: error.message,
+    });
+  }
+};
+
+// ====================================
+// IMAGE OPERATIONS
+// ====================================
+
+// Serve image by imageId directly
+exports.serveImageByImageId = async (req, res) => {
+  try {
+    const { imageId } = req.params;
+    const { getFileFromDrive } = require("../utils/driveUpload");
+
+    console.log(`🖼️ Fetching image with ID: ${imageId}`);
+
+    // Fetch file from Google Drive
+    const { buffer, mimeType, fileName } = await getFileFromDrive(imageId);
+
+    // Set appropriate headers
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.setHeader("Cache-Control", "private, max-age=3600"); // Cache for 1 hour
+
+    // Send file buffer
+    res.send(buffer);
+
+    console.log(`✅ Image served successfully: ${fileName}`);
+  } catch (error) {
+    console.error("❌ Error serving image by imageId:", error);
+
+    if (error.message.includes("not found")) {
+      return res.status(404).json({
+        success: false,
+        message: "Image not found",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve image",
+      error: error.message,
+    });
+  }
+};
+
+// Serve image from Google Drive (by walkout ID - legacy)
+exports.serveWalkoutImage = async (req, res) => {
+  try {
+    const { id } = req.params; // walkout ID
+    const { getFileFromDrive } = require("../utils/driveUpload");
+
+    // Find walkout
+    const walkout = await Walkout.findById(id);
+
+    if (!walkout) {
+      return res.status(404).json({
+        success: false,
+        message: "Walkout not found",
+      });
+    }
+
+    // Check if image exists
+    if (!walkout.officeWalkoutSnip || !walkout.officeWalkoutSnip.imageId) {
+      return res.status(404).json({
+        success: false,
+        message: "No image found for this walkout",
+      });
+    }
+
+    const imageId = walkout.officeWalkoutSnip.imageId;
+
+    // Get image from Google Drive
+    console.log(`📥 Fetching image from Google Drive: ${imageId}`);
+    const { buffer, mimeType, fileName } = await getFileFromDrive(imageId);
+
+    // Set response headers
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.setHeader("Cache-Control", "private, max-age=3600"); // Cache for 1 hour
+
+    // Send image buffer
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error serving walkout image:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error serving image",
       error: error.message,
     });
   }
