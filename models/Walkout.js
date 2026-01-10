@@ -48,6 +48,30 @@ const officeWalkoutSnipSchema = new mongoose.Schema(
 );
 
 // ====================================
+// CHECK IMAGE SCHEMA
+// ====================================
+const checkImageSchema = new mongoose.Schema(
+  {
+    imageId: {
+      type: String,
+      trim: true,
+    },
+    fileName: {
+      type: String,
+      trim: true,
+    },
+    uploadedAt: {
+      type: Date,
+    },
+    extractedData: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+// ====================================
 // OFFICE SECTION SCHEMAS
 // ====================================
 
@@ -607,6 +631,12 @@ const walkoutSchema = new mongoose.Schema(
     // Office Walkout Snip (NEW)
     officeWalkoutSnip: {
       type: officeWalkoutSnipSchema,
+      default: {},
+    },
+
+    // Check Image (NEW)
+    checkImage: {
+      type: checkImageSchema,
       default: {},
     },
 

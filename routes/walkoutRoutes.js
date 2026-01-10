@@ -17,11 +17,14 @@ const {
 // WALKOUT ROUTES
 // ============================================
 
-// Submit office section with optional image - All authenticated users
+// Submit office section with optional images - All authenticated users
 router.post(
   "/submit-office",
   protect,
-  upload.single("officeWalkoutSnip"),
+  upload.fields([
+    { name: "officeWalkoutSnip", maxCount: 1 },
+    { name: "checkImage", maxCount: 1 },
+  ]),
   submitOfficeSection
 );
 
@@ -37,11 +40,14 @@ router.get("/:id", protect, getWalkoutById);
 // Serve walkout image (legacy) - Public access (no auth required)
 router.get("/:id/image", serveWalkoutImage);
 
-// Update office section with optional image - All authenticated users
+// Update office section with optional images - All authenticated users
 router.put(
   "/:id/office",
   protect,
-  upload.single("officeWalkoutSnip"),
+  upload.fields([
+    { name: "officeWalkoutSnip", maxCount: 1 },
+    { name: "checkImage", maxCount: 1 },
+  ]),
   updateOfficeSection
 );
 

@@ -519,19 +519,23 @@ exports.submitOfficeSection = async (req, res) => {
     }
 
     // ====================================
-    // IMAGE UPLOAD TO GOOGLE DRIVE
+    // IMAGE UPLOADS TO GOOGLE DRIVE
     // ====================================
     let officeWalkoutSnipData = {};
+    let checkImageData = {};
 
-    if (req.file) {
+    // Handle Office Walkout Snip upload
+    if (req.files && req.files.officeWalkoutSnip) {
       try {
+        const file = req.files.officeWalkoutSnip[0];
         console.log("📤 Uploading office walkout snip to Google Drive...");
 
         const uploadResult = await uploadToGoogleDrive(
-          req.file.buffer,
-          req.file.originalname,
-          req.file.mimetype,
-          parsedAppointmentInfo
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          parsedAppointmentInfo,
+          "officeWalkoutSnip" // Folder type
         );
 
         officeWalkoutSnipData = {
@@ -542,13 +546,13 @@ exports.submitOfficeSection = async (req, res) => {
         };
 
         console.log(
-          `✅ Image uploaded successfully. File ID: ${uploadResult.fileId}`
+          `✅ Office Walkout Snip uploaded. File ID: ${uploadResult.fileId}`
         );
       } catch (uploadError) {
-        console.error("❌ Image upload failed:", uploadError);
+        console.error("❌ Office Walkout Snip upload failed:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Failed to upload image to Google Drive",
+          message: "Failed to upload Office Walkout Snip to Google Drive",
           error: uploadError.message,
         });
       }
@@ -559,12 +563,44 @@ exports.submitOfficeSection = async (req, res) => {
       };
     }
 
+    // Handle Check Image upload
+    if (req.files && req.files.checkImage) {
+      try {
+        const file = req.files.checkImage[0];
+        console.log("📤 Uploading check image to Google Drive...");
+
+        const uploadResult = await uploadToGoogleDrive(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          parsedAppointmentInfo,
+          "checkImage" // Folder type
+        );
+
+        checkImageData = {
+          imageId: uploadResult.fileId,
+          fileName: uploadResult.fileName,
+          uploadedAt: uploadResult.uploadedAt,
+        };
+
+        console.log(`✅ Check Image uploaded. File ID: ${uploadResult.fileId}`);
+      } catch (uploadError) {
+        console.error("❌ Check Image upload failed:", uploadError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload Check Image to Google Drive",
+          error: uploadError.message,
+        });
+      }
+    }
+
     // Create walkout document
     const walkout = await Walkout.create({
       userId: req.user._id,
       formRefId: formRefId || undefined, // Set only if provided, immutable after this
       appointmentInfo: parsedAppointmentInfo, // NEW: Required appointment info
       officeWalkoutSnip: officeWalkoutSnipData, // NEW: Image data (if uploaded)
+      checkImage: checkImageData, // NEW: Check image data (if uploaded)
       openTime: openTime || new Date(),
       submitToLC3: submitToLC3Time,
       lastUpdateOn: new Date(),
@@ -819,17 +855,21 @@ exports.updateOfficeSection = async (req, res) => {
     // appointmentInfo is also immutable - do NOT update it
 
     // ====================================
-    // IMAGE UPLOAD TO GOOGLE DRIVE (if new image provided)
+    // IMAGE UPLOADS TO GOOGLE DRIVE (if new images provided)
     // ====================================
-    if (req.file) {
+
+    // Handle Office Walkout Snip update
+    if (req.files && req.files.officeWalkoutSnip) {
       try {
+        const file = req.files.officeWalkoutSnip[0];
         console.log("📤 Uploading new office walkout snip to Google Drive...");
 
         const uploadResult = await uploadToGoogleDrive(
-          req.file.buffer,
-          req.file.originalname,
-          req.file.mimetype,
-          walkout.appointmentInfo
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          walkout.appointmentInfo,
+          "officeWalkoutSnip"
         );
 
         // Update image data
@@ -838,13 +878,43 @@ exports.updateOfficeSection = async (req, res) => {
         walkout.officeWalkoutSnip.uploadedAt = uploadResult.uploadedAt;
 
         console.log(
-          `✅ Image updated successfully. File ID: ${uploadResult.fileId}`
+          `✅ Office Walkout Snip updated. File ID: ${uploadResult.fileId}`
         );
       } catch (uploadError) {
-        console.error("❌ Image upload failed:", uploadError);
+        console.error("❌ Office Walkout Snip upload failed:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Failed to upload image to Google Drive",
+          message: "Failed to upload Office Walkout Snip to Google Drive",
+          error: uploadError.message,
+        });
+      }
+    }
+
+    // Handle Check Image update
+    if (req.files && req.files.checkImage) {
+      try {
+        const file = req.files.checkImage[0];
+        console.log("📤 Uploading new check image to Google Drive...");
+
+        const uploadResult = await uploadToGoogleDrive(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          walkout.appointmentInfo,
+          "checkImage"
+        );
+
+        // Update image data
+        walkout.checkImage.imageId = uploadResult.fileId;
+        walkout.checkImage.fileName = uploadResult.fileName;
+        walkout.checkImage.uploadedAt = uploadResult.uploadedAt;
+
+        console.log(`✅ Check Image updated. File ID: ${uploadResult.fileId}`);
+      } catch (uploadError) {
+        console.error("❌ Check Image upload failed:", uploadError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload Check Image to Google Drive",
           error: uploadError.message,
         });
       }
