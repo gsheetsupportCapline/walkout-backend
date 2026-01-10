@@ -1,5 +1,6 @@
 const initializeDrive = require("../config/googleDrive");
 const initializeDriveWithOAuth = require("../config/googleDriveOAuth");
+const { getFolderIdWithMapping } = require("./folderMappingHelper");
 const stream = require("stream");
 
 // Use OAuth Drive (with user's storage) for file uploads
@@ -39,68 +40,25 @@ const getMonthName = (date) => {
 };
 
 /**
- * Find or create folder by name in parent folder
- */
-const findOrCreateFolder = async (drive, folderName, parentFolderId) => {
-  try {
-    // Search for existing folder
-    const response = await drive.files.list({
-      q: `name='${folderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      fields: "files(id, name)",
-      spaces: "drive",
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-    });
-
-    // If folder exists, return its ID
-    if (response.data.files.length > 0) {
-      console.log(`📁 Found existing folder: ${folderName}`);
-      return response.data.files[0].id;
-    }
-
-    // Create new folder
-    console.log(`📁 Creating new folder: ${folderName}`);
-    const folderMetadata = {
-      name: folderName,
-      mimeType: "application/vnd.google-apps.folder",
-      parents: [parentFolderId],
-    };
-
-    const folder = await drive.files.create({
-      requestBody: folderMetadata,
-      fields: "id, name",
-      supportsAllDrives: true,
-    });
-
-    console.log(`✅ Created folder: ${folderName} (ID: ${folder.data.id})`);
-    return folder.data.id;
-  } catch (error) {
-    console.error(`❌ Error in findOrCreateFolder for ${folderName}:`, error);
-    throw error;
-  }
-};
-
-/**
- * Upload file to Google Drive with folder structure
+ * Upload file to Google Drive with folder structure (OPTIMIZED)
+ * Uses MongoDB folder mapping for fast access (NO compression)
  * @param {Buffer} fileBuffer - File buffer
  * @param {String} fileName - File name with extension
  * @param {String} mimeType - File MIME type
  * @param {Object} appointmentInfo - { patientId, dateOfService, officeName }
+ * @param {String} subFolderType - Type of subfolder (default: "officeWalkoutSnip")
  * @returns {Object} - { fileId, fileName, uploadedAt }
  */
 const uploadToGoogleDrive = async (
   fileBuffer,
   fileName,
   mimeType,
-  appointmentInfo
+  appointmentInfo,
+  subFolderType = "officeWalkoutSnip"
 ) => {
   try {
-    const drive = getDriveForUpload(); // Use OAuth drive
-    const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-
-    if (!rootFolderId) {
-      throw new Error("GOOGLE_DRIVE_FOLDER_ID not found in environment");
-    }
+    const startTime = Date.now();
+    const drive = getDriveForUpload();
 
     const { patientId, dateOfService, officeName } = appointmentInfo;
 
@@ -110,30 +68,19 @@ const uploadToGoogleDrive = async (
     const month = getMonthName(date);
 
     console.log(
-      `📤 Uploading file for: ${officeName} / ${year} / ${month} / Patient ${patientId}`
+      `📤 Starting upload for: ${officeName} / ${year} / ${month} / Patient ${patientId}`
     );
 
-    // Step 1: Find or create Year folder
-    const yearFolderId = await findOrCreateFolder(drive, year, rootFolderId);
-
-    // Step 2: Find or create Month folder inside Year
-    const monthFolderId = await findOrCreateFolder(drive, month, yearFolderId);
-
-    // Step 3: Find or create Office folder inside Month
-    const officeFolderId = await findOrCreateFolder(
-      drive,
+    // Step 1: Get folder ID using mapping (MongoDB cache + Drive fallback)
+    console.log("🗂️ Getting folder ID from mapping...");
+    const targetFolderId = await getFolderIdWithMapping(
+      year,
+      month,
       officeName,
-      monthFolderId
+      subFolderType
     );
 
-    // Step 4: Find or create "Office Walkout" folder inside Office
-    const officeWalkoutFolderId = await findOrCreateFolder(
-      drive,
-      "Office Walkout",
-      officeFolderId
-    );
-
-    // Step 5: Upload file to Office Walkout folder
+    // Step 2: Upload original file (NO compression)
     const timestamp = Date.now();
     const fileExtension = fileName.split(".").pop();
     const finalFileName = `${patientId}_${timestamp}.${fileExtension}`;
@@ -143,7 +90,7 @@ const uploadToGoogleDrive = async (
 
     const fileMetadata = {
       name: finalFileName,
-      parents: [officeWalkoutFolderId],
+      parents: [targetFolderId],
     };
 
     const media = {
@@ -151,7 +98,11 @@ const uploadToGoogleDrive = async (
       body: bufferStream,
     };
 
-    console.log(`📤 Uploading file: ${finalFileName}`);
+    console.log(
+      `📤 Uploading original file: ${finalFileName} (${(
+        fileBuffer.length / 1024
+      ).toFixed(2)}KB)`
+    );
 
     const file = await drive.files.create({
       requestBody: fileMetadata,
@@ -160,8 +111,9 @@ const uploadToGoogleDrive = async (
       supportsAllDrives: true,
     });
 
+    const uploadTime = Date.now() - startTime;
     console.log(
-      `✅ File uploaded successfully: ${finalFileName} (ID: ${file.data.id})`
+      `✅ File uploaded successfully in ${uploadTime}ms: ${finalFileName} (ID: ${file.data.id})`
     );
 
     return {
