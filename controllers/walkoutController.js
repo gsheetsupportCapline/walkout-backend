@@ -985,16 +985,64 @@ exports.submitLc3Section = async (req, res) => {
     }
 
     // Extract LC3 data from request body
+    // Parse JSON strings from FormData
     const {
-      ruleEngine,
-      documentCheck,
-      attachmentsCheck,
-      patientPortionCheck,
-      productionDetails,
-      providerNotes,
+      ruleEngine: ruleEngineRaw,
+      documentCheck: documentCheckRaw,
+      attachmentsCheck: attachmentsCheckRaw,
+      patientPortionCheck: patientPortionCheckRaw,
+      productionDetails: productionDetailsRaw,
+      providerNotes: providerNotesRaw,
       lc3Remarks,
-      onHoldNote, // Single note to add to onHoldNotes array
+      onHoldNote,
     } = req.body;
+
+    // Parse JSON fields if they are strings
+    const ruleEngine = ruleEngineRaw
+      ? typeof ruleEngineRaw === "string"
+        ? JSON.parse(ruleEngineRaw)
+        : ruleEngineRaw
+      : null;
+
+    const documentCheck = documentCheckRaw
+      ? typeof documentCheckRaw === "string"
+        ? JSON.parse(documentCheckRaw)
+        : documentCheckRaw
+      : null;
+
+    const attachmentsCheck = attachmentsCheckRaw
+      ? typeof attachmentsCheckRaw === "string"
+        ? JSON.parse(attachmentsCheckRaw)
+        : attachmentsCheckRaw
+      : null;
+
+    const patientPortionCheck = patientPortionCheckRaw
+      ? typeof patientPortionCheckRaw === "string"
+        ? JSON.parse(patientPortionCheckRaw)
+        : patientPortionCheckRaw
+      : null;
+
+    const productionDetails = productionDetailsRaw
+      ? typeof productionDetailsRaw === "string"
+        ? JSON.parse(productionDetailsRaw)
+        : productionDetailsRaw
+      : null;
+
+    const providerNotes = providerNotesRaw
+      ? typeof providerNotesRaw === "string"
+        ? JSON.parse(providerNotesRaw)
+        : providerNotesRaw
+      : null;
+
+    console.log("📝 LC3 Section Data Received:");
+    console.log("  - ruleEngine:", ruleEngine ? "✓" : "✗");
+    console.log("  - documentCheck:", documentCheck ? "✓" : "✗");
+    console.log("  - attachmentsCheck:", attachmentsCheck ? "✓" : "✗");
+    console.log("  - patientPortionCheck:", patientPortionCheck ? "✓" : "✗");
+    console.log("  - productionDetails:", productionDetails ? "✓" : "✗");
+    console.log("  - providerNotes:", providerNotes ? "✓" : "✗");
+    console.log("  - lc3Remarks:", lc3Remarks ? "✓" : "✗");
+    console.log("  - onHoldNote:", onHoldNote ? "✓" : "✗");
 
     // Update Rule Engine if provided
     if (ruleEngine) {
@@ -1059,6 +1107,43 @@ exports.submitLc3Section = async (req, res) => {
         addedBy: userId,
         addedAt: new Date(),
       });
+    }
+
+    // ====================================
+    // LC3 WALKOUT IMAGE UPLOAD TO GOOGLE DRIVE (if provided)
+    // ====================================
+    if (req.file) {
+      try {
+        console.log("📤 Uploading LC3 walkout image to Google Drive...");
+
+        const { uploadToGoogleDrive } = require("../utils/driveUpload");
+
+        const uploadResult = await uploadToGoogleDrive(
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype,
+          walkout.appointmentInfo,
+          "lc3WalkoutImage" // Folder type
+        );
+
+        // Update LC3 image data
+        walkout.lc3WalkoutImage = {
+          imageId: uploadResult.fileId,
+          fileName: uploadResult.fileName,
+          uploadedAt: uploadResult.uploadedAt,
+        };
+
+        console.log(
+          `✅ LC3 Walkout Image uploaded. File ID: ${uploadResult.fileId}`
+        );
+      } catch (uploadError) {
+        console.error("❌ LC3 Walkout Image upload failed:", uploadError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload LC3 Walkout Image to Google Drive",
+          error: uploadError.message,
+        });
+      }
     }
 
     // Update submission metadata

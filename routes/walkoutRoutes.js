@@ -51,8 +51,13 @@ router.put(
   updateOfficeSection
 );
 
-// Submit/Update LC3 section - All authenticated users
-router.put("/:id/lc3", protect, submitLc3Section);
+// Submit/Update LC3 section with optional image - All authenticated users
+router.put(
+  "/:id/lc3",
+  protect,
+  upload.single("lc3WalkoutImage"),
+  submitLc3Section
+);
 
 // Delete walkout - Admin/SuperAdmin only
 router.delete(

@@ -72,6 +72,30 @@ const checkImageSchema = new mongoose.Schema(
 );
 
 // ====================================
+// LC3 WALKOUT IMAGE SCHEMA
+// ====================================
+const lc3WalkoutImageSchema = new mongoose.Schema(
+  {
+    imageId: {
+      type: String,
+      trim: true,
+    },
+    fileName: {
+      type: String,
+      trim: true,
+    },
+    uploadedAt: {
+      type: Date,
+    },
+    extractedData: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+// ====================================
 // OFFICE SECTION SCHEMAS
 // ====================================
 
@@ -637,6 +661,12 @@ const walkoutSchema = new mongoose.Schema(
     // Check Image (NEW)
     checkImage: {
       type: checkImageSchema,
+      default: {},
+    },
+
+    // LC3 Walkout Image (NEW)
+    lc3WalkoutImage: {
+      type: lc3WalkoutImageSchema,
       default: {},
     },
 
