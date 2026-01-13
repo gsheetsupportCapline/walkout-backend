@@ -170,10 +170,13 @@ exports.getProviderScheduleStats = async (req, res) => {
  */
 exports.getByOfficeAndDOS = async (req, res) => {
   try {
-    const { officeName, dos } = req.body;
+    const { office, officeName, dos } = req.body;
+
+    // Support both "office" and "officeName" for backwards compatibility
+    const officeValue = office || officeName;
 
     // Validate required fields
-    if (!officeName || !dos) {
+    if (!officeValue || !dos) {
       return res.status(400).json({
         success: false,
         message: "Office name and DOS (date of service) are required",
@@ -182,7 +185,7 @@ exports.getByOfficeAndDOS = async (req, res) => {
 
     // Find all provider schedules for this office and DOS
     const schedules = await ProviderSchedule.find({
-      "office-name": officeName,
+      "office-name": officeValue,
       dos: dos,
     }).select(
       "dos office-name provider-code provider-hygienist provider-code-with-type provider-full-name provider-type updated-on"
