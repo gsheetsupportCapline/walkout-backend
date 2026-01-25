@@ -9,7 +9,7 @@ const ProviderSchedule = require("../models/ProviderSchedule");
 exports.manualSync = async (req, res) => {
   try {
     console.log(
-      `Manual provider schedule sync triggered by user: ${req.user.name} (${req.user.role})`
+      `Manual provider schedule sync triggered by user: ${req.user.name} (${req.user.role})`,
     );
 
     const result = await syncProviderSchedule();
@@ -79,7 +79,7 @@ exports.getProviderScheduleList = async (req, res) => {
       .limit(parseInt(limit))
       .skip(parseInt(skip))
       .select(
-        "dos office-name provider-code provider-hygienist provider-code-with-type provider-full-name provider-type updated-on"
+        "dos office-name provider-code provider-hygienist provider-code-with-type provider-full-name provider-type updated-on",
       );
 
     const total = await ProviderSchedule.countDocuments(query);
@@ -195,7 +195,7 @@ exports.getByOfficeAndDOS = async (req, res) => {
       "office-name": officeValue,
       dos: normalizedDOS,
     }).select(
-      "dos office-name provider-code provider-hygienist provider-code-with-type provider-full-name provider-type updated-on"
+      "dos office-name provider-code provider-hygienist provider-code-with-type provider-full-name provider-type updated-on",
     );
 
     if (!schedules || schedules.length === 0) {

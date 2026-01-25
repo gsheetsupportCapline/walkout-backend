@@ -7,11 +7,7 @@ const testSheetsAccess = async () => {
 
     // Check credentials
     console.log("Email:", process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
-    console.log(
-      "Private Key exists:",
-      !!process.env.GOOGLE_PRIVATE_KEY,
-      "\n",
-    );
+    console.log("Private Key exists:", !!process.env.GOOGLE_PRIVATE_KEY, "\n");
 
     const auth = new google.auth.GoogleAuth({
       credentials: {
