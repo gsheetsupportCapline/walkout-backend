@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const connectDB = require("./config/database");
 const { initAppointmentCron } = require("./cron/appointmentCron");
 const { initProviderScheduleCron } = require("./cron/providerScheduleCron");
@@ -11,7 +12,17 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+// CORS configuration - credentials enabled for cross-origin cookie support
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true, // Allow cookies to be sent with requests
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
+app.use(cookieParser()); // Parse cookies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

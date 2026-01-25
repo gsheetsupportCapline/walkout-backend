@@ -11,6 +11,7 @@ const {
   deleteWalkout,
   serveWalkoutImage,
   serveImageByImageId,
+  getImagePresignedUrl,
 } = require("../controllers/walkoutController");
 
 // ============================================
@@ -25,7 +26,7 @@ router.post(
     { name: "officeWalkoutSnip", maxCount: 1 },
     { name: "checkImage", maxCount: 1 },
   ]),
-  submitOfficeSection
+  submitOfficeSection,
 );
 
 // Get all walkouts - All authenticated users
@@ -33,6 +34,9 @@ router.get("/", protect, getAllWalkouts);
 
 // Serve image by imageId directly - Public access (no auth required)
 router.get("/image/:imageId", serveImageByImageId);
+
+// Get presigned URL for image (OPTIONAL - better performance) - Public access
+router.get("/image-url/:imageId", getImagePresignedUrl);
 
 // Get walkout by ID - All authenticated users
 router.get("/:id", protect, getWalkoutById);
@@ -48,7 +52,7 @@ router.put(
     { name: "officeWalkoutSnip", maxCount: 1 },
     { name: "checkImage", maxCount: 1 },
   ]),
-  updateOfficeSection
+  updateOfficeSection,
 );
 
 // Submit/Update LC3 section with optional image - All authenticated users
@@ -56,7 +60,7 @@ router.put(
   "/:id/lc3",
   protect,
   upload.single("lc3WalkoutImage"),
-  submitLc3Section
+  submitLc3Section,
 );
 
 // Delete walkout - Admin/SuperAdmin only
@@ -64,7 +68,7 @@ router.delete(
   "/:id",
   protect,
   restrictTo("admin", "superAdmin"),
-  deleteWalkout
+  deleteWalkout,
 );
 
 module.exports = router;

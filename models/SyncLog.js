@@ -12,7 +12,46 @@ const syncExecutionSchema = new mongoose.Schema({
     },
     offices: [
       {
-        type: String,
+        officeName: String,
+        newCount: Number,
+        updatedCount: Number,
+        archivedCount: Number,
+        newAppointments: [
+          {
+            "patient-id": String,
+            "patient-name": String,
+            dos: String,
+            "chair-name": String,
+            "insurance-name": String,
+            "insurance-type": String,
+          },
+        ],
+        updatedAppointments: [
+          {
+            "patient-id": String,
+            "patient-name": String,
+            dos: String,
+            "chair-name": String, // From existing record (not updated)
+            "insurance-name": String, // From existing record (not updated)
+            "insurance-type": String, // From existing record (not updated)
+            before: {
+              "patient-name": String, // Only patient-name tracked for changes
+            },
+            after: {
+              "patient-name": String, // Only patient-name tracked for changes
+            },
+          },
+        ],
+        archivedAppointments: [
+          {
+            "patient-id": String,
+            "patient-name": String,
+            dos: String,
+            "chair-name": String,
+            "insurance-name": String,
+            "insurance-type": String,
+          },
+        ],
       },
     ],
   },
@@ -23,7 +62,8 @@ const syncExecutionSchema = new mongoose.Schema({
     },
     offices: [
       {
-        type: String,
+        officeName: String,
+        reason: String,
       },
     ],
   },

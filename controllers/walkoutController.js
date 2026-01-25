@@ -1,6 +1,7 @@
 const Walkout = require("../models/Walkout");
 const validateOfficeSection = require("../utils/validateOfficeSection");
-const { uploadToGoogleDrive } = require("../utils/driveUpload");
+// const { uploadToGoogleDrive } = require("../utils/driveUpload"); // Google Drive (deprecated)
+const { uploadToS3 } = require("../utils/s3Upload"); // AWS S3 (new)
 
 // Helper function to convert FormData string values to numbers
 const toNumber = (value) => {
@@ -109,17 +110,17 @@ exports.submitOfficeSection = async (req, res) => {
     const insuranceTypeNum = toNumber(insuranceType);
     const googleReviewRequestNum = toNumber(googleReviewRequest);
     const expectedPatientPortionOfficeWONum = toNumber(
-      expectedPatientPortionOfficeWO
+      expectedPatientPortionOfficeWO,
     );
     const patientPortionCollectedNum = toNumber(patientPortionCollected);
     const differenceInPatientPortionNum = toNumber(differenceInPatientPortion);
     const patientPortionPrimaryModeNum = toNumber(patientPortionPrimaryMode);
     const amountCollectedPrimaryModeNum = toNumber(amountCollectedPrimaryMode);
     const patientPortionSecondaryModeNum = toNumber(
-      patientPortionSecondaryMode
+      patientPortionSecondaryMode,
     );
     const amountCollectedSecondaryModeNum = toNumber(
-      amountCollectedSecondaryMode
+      amountCollectedSecondaryMode,
     );
     const ruleEngineRunNum = toNumber(ruleEngineRun);
     const ruleEngineErrorNum = toNumber(ruleEngineError);
@@ -519,7 +520,7 @@ exports.submitOfficeSection = async (req, res) => {
     }
 
     // ====================================
-    // IMAGE UPLOADS TO GOOGLE DRIVE
+    // IMAGE UPLOADS TO AWS S3
     // ====================================
     let officeWalkoutSnipData = {};
     let checkImageData = {};
@@ -528,31 +529,31 @@ exports.submitOfficeSection = async (req, res) => {
     if (req.files && req.files.officeWalkoutSnip) {
       try {
         const file = req.files.officeWalkoutSnip[0];
-        console.log("📤 Uploading office walkout snip to Google Drive...");
+        console.log("📤 Uploading office walkout snip to S3...");
 
-        const uploadResult = await uploadToGoogleDrive(
+        const uploadResult = await uploadToS3(
           file.buffer,
           file.originalname,
           file.mimetype,
           parsedAppointmentInfo,
-          "officeWalkoutSnip" // Folder type
+          "officeWalkoutSnip", // Folder type
         );
 
         officeWalkoutSnipData = {
-          imageId: uploadResult.fileId,
+          imageId: uploadResult.fileKey, // S3 key instead of Drive file ID
           fileName: uploadResult.fileName,
           uploadedAt: uploadResult.uploadedAt,
           extractedData: extractedData || undefined,
         };
 
         console.log(
-          `✅ Office Walkout Snip uploaded. File ID: ${uploadResult.fileId}`
+          `✅ Office Walkout Snip uploaded. S3 Key: ${uploadResult.fileKey}`,
         );
       } catch (uploadError) {
         console.error("❌ Office Walkout Snip upload failed:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Failed to upload Office Walkout Snip to Google Drive",
+          message: "Failed to upload Office Walkout Snip to S3",
           error: uploadError.message,
         });
       }
@@ -574,7 +575,7 @@ exports.submitOfficeSection = async (req, res) => {
           file.originalname,
           file.mimetype,
           parsedAppointmentInfo,
-          "checkImage" // Folder type
+          "checkImage", // Folder type
         );
 
         checkImageData = {
@@ -720,7 +721,7 @@ exports.updateOfficeSection = async (req, res) => {
       insurance: req.body.insurance,
       googleReviewRequest: req.body.googleReviewRequest,
       expectedPatientPortionOfficeWO: toNumber(
-        req.body.expectedPatientPortionOfficeWO
+        req.body.expectedPatientPortionOfficeWO,
       ),
       patientPortionCollected: toNumber(req.body.patientPortionCollected),
       differenceInPatientPortion: toNumber(req.body.differenceInPatientPortion),
@@ -728,7 +729,7 @@ exports.updateOfficeSection = async (req, res) => {
       amountCollectedPrimaryMode: toNumber(req.body.amountCollectedPrimaryMode),
       patientPortionSecondaryMode: req.body.patientPortionSecondaryMode,
       amountCollectedSecondaryMode: toNumber(
-        req.body.amountCollectedSecondaryMode
+        req.body.amountCollectedSecondaryMode,
       ),
       lastFourDigitsCheckForte: req.body.lastFourDigitsCheckForte,
       reasonLessCollection: req.body.reasonLessCollection,
@@ -869,7 +870,7 @@ exports.updateOfficeSection = async (req, res) => {
           file.originalname,
           file.mimetype,
           walkout.appointmentInfo,
-          "officeWalkoutSnip"
+          "officeWalkoutSnip",
         );
 
         // Update image data
@@ -878,7 +879,7 @@ exports.updateOfficeSection = async (req, res) => {
         walkout.officeWalkoutSnip.uploadedAt = uploadResult.uploadedAt;
 
         console.log(
-          `✅ Office Walkout Snip updated. File ID: ${uploadResult.fileId}`
+          `✅ Office Walkout Snip updated. File ID: ${uploadResult.fileId}`,
         );
       } catch (uploadError) {
         console.error("❌ Office Walkout Snip upload failed:", uploadError);
@@ -901,7 +902,7 @@ exports.updateOfficeSection = async (req, res) => {
           file.originalname,
           file.mimetype,
           walkout.appointmentInfo,
-          "checkImage"
+          "checkImage",
         );
 
         // Update image data
@@ -1110,37 +1111,37 @@ exports.submitLc3Section = async (req, res) => {
     }
 
     // ====================================
-    // LC3 WALKOUT IMAGE UPLOAD TO GOOGLE DRIVE (if provided)
+    // LC3 WALKOUT IMAGE UPLOAD TO S3 (if provided)
     // ====================================
     if (req.file) {
       try {
-        console.log("📤 Uploading LC3 walkout image to Google Drive...");
+        console.log("📤 Uploading LC3 walkout image to S3...");
 
-        const { uploadToGoogleDrive } = require("../utils/driveUpload");
+        const { uploadToS3 } = require("../utils/s3Upload");
 
-        const uploadResult = await uploadToGoogleDrive(
+        const uploadResult = await uploadToS3(
           req.file.buffer,
           req.file.originalname,
           req.file.mimetype,
           walkout.appointmentInfo,
-          "lc3WalkoutImage" // Folder type
+          "lc3WalkoutImage", // Folder type
         );
 
         // Update LC3 image data
         walkout.lc3WalkoutImage = {
-          imageId: uploadResult.fileId,
+          imageId: uploadResult.key, // S3 key
           fileName: uploadResult.fileName,
           uploadedAt: uploadResult.uploadedAt,
         };
 
         console.log(
-          `✅ LC3 Walkout Image uploaded. File ID: ${uploadResult.fileId}`
+          `✅ LC3 Walkout Image uploaded. S3 Key: ${uploadResult.key}`,
         );
       } catch (uploadError) {
         console.error("❌ LC3 Walkout Image upload failed:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Failed to upload LC3 Walkout Image to Google Drive",
+          message: "Failed to upload LC3 Walkout Image to S3",
           error: uploadError.message,
         });
       }
@@ -1216,12 +1217,28 @@ exports.deleteWalkout = async (req, res) => {
 exports.serveImageByImageId = async (req, res) => {
   try {
     const { imageId } = req.params;
-    const { getFileFromDrive } = require("../utils/driveUpload");
+    // const { getFileFromDrive } = require("../utils/driveUpload"); // Google Drive (old)
+    const { getFileFromS3 } = require("../utils/s3Upload"); // AWS S3 (new)
 
-    console.log(`🖼️ Fetching image with ID: ${imageId}`);
+    console.log(`🖼️ Fetching image from S3 with key: ${imageId}`);
 
-    // Fetch file from Google Drive
-    const { buffer, mimeType, fileName } = await getFileFromDrive(imageId);
+    // Fetch file from S3 (imageId is now S3 key)
+    const buffer = await getFileFromS3(imageId);
+
+    // Extract file extension and determine MIME type
+    const extension = imageId.split(".").pop().toLowerCase();
+    const mimeTypes = {
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      bmp: "image/bmp",
+    };
+    const mimeType = mimeTypes[extension] || "application/octet-stream";
+
+    // Extract filename from S3 key
+    const fileName = imageId.split("/").pop();
 
     // Set appropriate headers
     res.setHeader("Content-Type", mimeType);
@@ -1233,9 +1250,12 @@ exports.serveImageByImageId = async (req, res) => {
 
     console.log(`✅ Image served successfully: ${fileName}`);
   } catch (error) {
-    console.error("❌ Error serving image by imageId:", error);
+    console.error("❌ Error serving image from S3:", error);
 
-    if (error.message.includes("not found")) {
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("NoSuchKey")
+    ) {
       return res.status(404).json({
         success: false,
         message: "Image not found",
@@ -1244,17 +1264,17 @@ exports.serveImageByImageId = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve image",
+      message: "Failed to retrieve image from S3",
       error: error.message,
     });
   }
 };
 
-// Serve image from Google Drive (by walkout ID - legacy)
+// Serve image from S3 (by walkout ID - legacy endpoint)
 exports.serveWalkoutImage = async (req, res) => {
   try {
     const { id } = req.params; // walkout ID
-    const { getFileFromDrive } = require("../utils/driveUpload");
+    const { getFileFromS3 } = require("../utils/s3Upload");
 
     // Find walkout
     const walkout = await Walkout.findById(id);
@@ -1274,11 +1294,24 @@ exports.serveWalkoutImage = async (req, res) => {
       });
     }
 
-    const imageId = walkout.officeWalkoutSnip.imageId;
+    const imageId = walkout.officeWalkoutSnip.imageId; // S3 key
 
-    // Get image from Google Drive
-    console.log(`📥 Fetching image from Google Drive: ${imageId}`);
-    const { buffer, mimeType, fileName } = await getFileFromDrive(imageId);
+    // Get image from S3
+    console.log(`📥 Fetching image from S3: ${imageId}`);
+    const buffer = await getFileFromS3(imageId);
+
+    // Extract file extension and determine MIME type
+    const extension = imageId.split(".").pop().toLowerCase();
+    const mimeTypes = {
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      bmp: "image/bmp",
+    };
+    const mimeType = mimeTypes[extension] || "application/octet-stream";
+    const fileName = imageId.split("/").pop();
 
     // Set response headers
     res.setHeader("Content-Type", mimeType);
@@ -1291,7 +1324,37 @@ exports.serveWalkoutImage = async (req, res) => {
     console.error("Error serving walkout image:", error);
     res.status(500).json({
       success: false,
-      message: "Error serving image",
+      message: "Error serving image from S3",
+      error: error.message,
+    });
+  }
+};
+
+// ============================================
+// Get Presigned URL for S3 Image (OPTIONAL - for better performance)
+// ============================================
+exports.getImagePresignedUrl = async (req, res) => {
+  try {
+    const { imageId } = req.params;
+    const { getPresignedUrl } = require("../utils/s3Upload");
+
+    console.log(`🔗 Generating presigned URL for S3 key: ${imageId}`);
+
+    // Generate presigned URL valid for 1 hour
+    const url = await getPresignedUrl(imageId, 3600);
+
+    res.status(200).json({
+      success: true,
+      url: url,
+      expiresIn: 3600, // seconds
+    });
+
+    console.log(`✅ Presigned URL generated successfully`);
+  } catch (error) {
+    console.error("❌ Error generating presigned URL:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate image URL",
       error: error.message,
     });
   }

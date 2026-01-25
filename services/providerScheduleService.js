@@ -26,6 +26,8 @@ const getGoogleSheetsClient = () => {
     process.env.GOOGLE_PRIVATE_KEY
   ) {
     // Use environment variables (recommended for production)
+    console.log("✓ Using Google Service Account from environment variables");
+    console.log(`✓ Email: ${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}`);
     auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -35,9 +37,11 @@ const getGoogleSheetsClient = () => {
     });
   } else if (process.env.GOOGLE_API_KEY) {
     // Use API Key (simpler but less secure)
+    console.log("✓ Using Google API Key from environment variables");
     auth = process.env.GOOGLE_API_KEY;
   } else {
     // Fallback to credentials file
+    console.log("⚠ Falling back to credentials.json file");
     auth = new google.auth.GoogleAuth({
       keyFile: "./credentials.json",
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
@@ -79,7 +83,7 @@ const fetchProviderScheduleData = async (retryCount = 0) => {
     return rows;
   } catch (error) {
     console.error(
-      `✗ Error fetching sheet data (Attempt ${retryCount + 1}/${maxRetries}):`
+      `✗ Error fetching sheet data (Attempt ${retryCount + 1}/${maxRetries}):`,
     );
     console.error(`   Error Name: ${error.name}`);
     console.error(`   Error Message: ${error.message}`);
@@ -206,7 +210,7 @@ const syncProviderSchedule = async () => {
                   "provider-type": data["provider-type"],
                   "updated-on": getCSTDateTime(),
                 },
-              }
+              },
             );
             updatedCount++;
           } else {
@@ -229,7 +233,7 @@ const syncProviderSchedule = async () => {
     console.log(`\n========================================`);
     console.log(`✓ Provider Schedule Sync Completed`);
     console.log(
-      `New: ${insertedCount} | Updated: ${updatedCount} | Skipped: ${skippedCount}`
+      `New: ${insertedCount} | Updated: ${updatedCount} | Skipped: ${skippedCount}`,
     );
     console.log(`Total Processed: ${transformedData.length}`);
     console.log(`========================================\n`);

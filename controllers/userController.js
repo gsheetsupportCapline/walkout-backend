@@ -87,6 +87,14 @@ const login = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    // Set cookie with proper cross-origin settings
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
     res.status(200).json({
       success: true,
       data: {
@@ -300,7 +308,7 @@ const updateUser = async (req, res) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     )
       .populate("teamName.teamId", "teamName teamPermissions")
       .populate("assignedOffice.officeId", "officeName regionId")

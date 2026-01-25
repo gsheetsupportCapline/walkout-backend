@@ -75,12 +75,12 @@ const fetchAppointmentData = async (officeName, startDate, endDate) => {
     };
 
     console.log(
-      `Fetching data for office: ${officeName} (${formattedStartDate} to ${formattedEndDate})`
+      `Fetching data for office: ${officeName} (${formattedStartDate} to ${formattedEndDate})`,
     );
 
     const response = await axios.get(apiUrl, {
       params: params,
-      timeout: 120000, // 120 seconds timeout for this API (increased from 60)
+      timeout: 20000, // 20 seconds timeout
     });
 
     // API returns: { message: "", data: [{c1, c2, c3, c4, c5, c6}], status: "OK" }
@@ -88,19 +88,19 @@ const fetchAppointmentData = async (officeName, startDate, endDate) => {
     const appointmentData = response.data.data || [];
 
     console.log(
-      `✓ Received ${appointmentData.length} appointments for office: ${officeName}`
+      `✓ Received ${appointmentData.length} appointments for office: ${officeName}`,
     );
 
     return appointmentData;
   } catch (error) {
     if (error.code === "ECONNABORTED") {
       console.error(
-        `✗ Timeout fetching data for office ${officeName} (exceeded 120 seconds)`
+        `✗ Timeout fetching data for office ${officeName} (exceeded 20 seconds)`,
       );
     } else {
       console.error(
         `✗ Error fetching data for office ${officeName}:`,
-        error.message
+        error.message,
       );
     }
     throw error;
@@ -127,21 +127,13 @@ const transformData = (apiData, officeName) => {
 };
 
 /**
- * Sync appointments for a single office with retry logic
+ * Sync appointments for a single office
  * @param {Object} office - Office document
  * @param {string} startDate - Start date for fetching
  * @param {string} endDate - End date for fetching
- * @param {number} retryCount - Current retry attempt (default 0)
  * @returns {Promise<Object>} - Result with success status and counts
  */
-const syncOfficeAppointments = async (
-  office,
-  startDate,
-  endDate,
-  retryCount = 0
-) => {
-  const maxRetries = 2; // Will try up to 3 times (initial + 2 retries)
-
+const syncOfficeAppointments = async (office, startDate, endDate) => {
   try {
     const officeName = office.officeName;
 
@@ -162,8 +154,28 @@ const syncOfficeAppointments = async (
 
     // Transform API data
     const transformedData = apiData.map((item) =>
-      transformData(item, officeName)
+      transformData(item, officeName),
     );
+
+    // Remove duplicates from API data (keep FIRST occurrence)
+    // API sometimes sends multiple entries for same patient-id + dos
+    const deduplicatedData = [];
+    const seenKeys = new Set();
+
+    transformedData.forEach((item) => {
+      const key = `${item["patient-id"]}_${item["office-name"]}_${item.dos}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        deduplicatedData.push(item); // Keep first occurrence
+      }
+    });
+
+    const duplicateCount = transformedData.length - deduplicatedData.length;
+    if (duplicateCount > 0) {
+      console.log(
+        `⚠ Removed ${duplicateCount} duplicate entries from API data for office: ${officeName}`,
+      );
+    }
 
     // Get existing appointments for this office
     const existingAppointments = await PatientAppointment.find({
@@ -172,9 +184,9 @@ const syncOfficeAppointments = async (
 
     // Create a Set of unique identifiers from API data for quick lookup
     const apiDataSet = new Set(
-      transformedData.map(
-        (item) => `${item["patient-id"]}_${item["office-name"]}_${item.dos}`
-      )
+      deduplicatedData.map(
+        (item) => `${item["patient-id"]}_${item["office-name"]}_${item.dos}`,
+      ),
     );
 
     // Find appointments to archive (exist in DB but not in API response)
@@ -207,7 +219,7 @@ const syncOfficeAppointments = async (
 
       archivedCount = appointmentsToArchive.length;
       console.log(
-        `Archived ${archivedCount} appointments for office: ${officeName}`
+        `Archived ${archivedCount} appointments for office: ${officeName}`,
       );
     }
 
@@ -215,8 +227,10 @@ const syncOfficeAppointments = async (
     let insertedCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
+    const newAppointments = []; // Track newly inserted appointments
+    const updatedAppointments = []; // Track updated appointments with before/after data
 
-    for (const data of transformedData) {
+    for (const data of deduplicatedData) {
       try {
         // First, check if the appointment already exists
         const existingAppointment = await PatientAppointment.findOne({
@@ -226,15 +240,17 @@ const syncOfficeAppointments = async (
         });
 
         if (existingAppointment) {
-          // Check if any field (except updated-on) has actually changed
+          // Only check if patient-name has changed (ignore chair and insurance)
           const hasChanges =
-            existingAppointment["patient-name"] !== data["patient-name"] ||
-            existingAppointment["chair-name"] !== data["chair-name"] ||
-            existingAppointment["insurance-name"] !== data["insurance-name"] ||
-            existingAppointment["insurance-type"] !== data["insurance-type"];
+            existingAppointment["patient-name"] !== data["patient-name"];
 
           if (hasChanges) {
-            // Only update if there are actual changes, and update the updated-on timestamp
+            // Store before data for logs (only patient-name)
+            const beforeData = {
+              "patient-name": existingAppointment["patient-name"],
+            };
+
+            // Only update patient-name if changed
             await PatientAppointment.updateOne(
               {
                 "patient-id": data["patient-id"],
@@ -244,14 +260,25 @@ const syncOfficeAppointments = async (
               {
                 $set: {
                   "patient-name": data["patient-name"],
-                  "chair-name": data["chair-name"],
-                  "insurance-name": data["insurance-name"],
-                  "insurance-type": data["insurance-type"],
                   "updated-on": getCSTDateTime(),
                 },
-              }
+              },
             );
             updatedCount++;
+
+            // Store updated appointment data for logs (only patient-name changed)
+            updatedAppointments.push({
+              "patient-id": data["patient-id"],
+              "patient-name": data["patient-name"],
+              dos: data.dos,
+              "chair-name": existingAppointment["chair-name"], // Keep existing chair
+              "insurance-name": existingAppointment["insurance-name"], // Keep existing insurance
+              "insurance-type": existingAppointment["insurance-type"], // Keep existing type
+              before: beforeData,
+              after: {
+                "patient-name": data["patient-name"],
+              },
+            });
           } else {
             // No changes, skip update and keep old updated-on timestamp
             skippedCount++;
@@ -260,6 +287,15 @@ const syncOfficeAppointments = async (
           // New appointment, insert it
           await PatientAppointment.create(data);
           insertedCount++;
+          // Store new appointment data for logs
+          newAppointments.push({
+            "patient-id": data["patient-id"],
+            "patient-name": data["patient-name"],
+            dos: data.dos,
+            "chair-name": data["chair-name"],
+            "insurance-name": data["insurance-name"],
+            "insurance-type": data["insurance-type"],
+          });
         }
       } catch (error) {
         // Skip duplicate entries
@@ -270,7 +306,7 @@ const syncOfficeAppointments = async (
     }
 
     console.log(
-      `✓ Office: ${officeName} | New: ${insertedCount} | Updated: ${updatedCount} | Skipped: ${skippedCount} | Archived: ${archivedCount}`
+      `✓ Office: ${officeName} | New: ${insertedCount} | Updated: ${updatedCount} | Skipped: ${skippedCount} | Archived: ${archivedCount}`,
     );
 
     return {
@@ -279,32 +315,20 @@ const syncOfficeAppointments = async (
       newCount: insertedCount,
       updatedCount: updatedCount,
       archivedCount: archivedCount,
+      newAppointments: newAppointments,
+      updatedAppointments: updatedAppointments,
+      archivedAppointments: appointmentsToArchive.map((appt) => ({
+        "patient-id": appt["patient-id"],
+        "patient-name": appt["patient-name"],
+        dos: appt.dos,
+        "chair-name": appt["chair-name"],
+        "insurance-name": appt["insurance-name"],
+        "insurance-type": appt["insurance-type"],
+      })),
     };
   } catch (error) {
-    // Retry logic
-    if (retryCount < maxRetries) {
-      console.warn(
-        `⚠ Retry ${retryCount + 1}/${maxRetries} for office ${
-          office.officeName
-        } due to: ${error.message}`
-      );
-
-      // Wait 5 seconds before retrying
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-
-      // Recursive retry
-      return await syncOfficeAppointments(
-        office,
-        startDate,
-        endDate,
-        retryCount + 1
-      );
-    }
-
     console.error(
-      `✗ Failed to sync office ${office.officeName} after ${
-        maxRetries + 1
-      } attempts: ${error.message}`
+      `✗ Failed to sync office ${office.officeName}: ${error.message}`,
     );
     return {
       success: false,
@@ -330,7 +354,7 @@ const syncAllAppointments = async (options = {}) => {
   console.log(
     `Starting appointment sync - ${
       manualTrigger ? "MANUAL" : "AUTOMATIC"
-    } trigger`
+    } trigger`,
   );
 
   try {
@@ -353,27 +377,33 @@ const syncAllAppointments = async (options = {}) => {
 
     console.log(`Processing ${activeOffices.length} active offices`);
 
-    // Process each office sequentially to avoid overwhelming the API
-    const results = [];
-    for (const office of activeOffices) {
-      console.log(`\n--- Processing office: ${office.officeName} ---`);
-      const result = await syncOfficeAppointments(office, startDate, endDate);
-      results.push(result);
-
-      // Add a small delay between offices to be respectful to the API
-      if (results.length < activeOffices.length) {
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
-      }
-    }
+    // Process all offices concurrently
+    const results = await Promise.all(
+      activeOffices.map(async (office) => {
+        console.log(`\n--- Processing office: ${office.officeName} ---`);
+        return await syncOfficeAppointments(office, startDate, endDate);
+      }),
+    );
 
     // Separate successful and failed syncs
     const successfulOffices = results
       .filter((r) => r.success)
-      .map((r) => r.officeName);
+      .map((r) => ({
+        officeName: r.officeName,
+        newCount: r.newCount,
+        updatedCount: r.updatedCount,
+        archivedCount: r.archivedCount,
+        newAppointments: r.newAppointments || [],
+        updatedAppointments: r.updatedAppointments || [],
+        archivedAppointments: r.archivedAppointments || [],
+      }));
 
     const failedOffices = results
       .filter((r) => !r.success)
-      .map((r) => r.officeName);
+      .map((r) => ({
+        officeName: r.officeName,
+        reason: r.reason || "Unknown error",
+      }));
 
     // Update sync log
     const currentDate = getCSTDate();
@@ -401,11 +431,11 @@ const syncAllAppointments = async (options = {}) => {
         $inc: { totalExecutions: 1 },
         $set: { lastSyncAt: currentDateTime },
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     console.log(
-      `Sync completed - Success: ${successfulOffices.length}, Failed: ${failedOffices.length}`
+      `Sync completed - Success: ${successfulOffices.length}, Failed: ${failedOffices.length}`,
     );
 
     return {
@@ -415,11 +445,13 @@ const syncAllAppointments = async (options = {}) => {
       totalOffices: activeOffices.length,
       successfulOffices: {
         count: successfulOffices.length,
-        offices: successfulOffices,
+        offices: successfulOffices.map((o) => o.officeName),
+        details: successfulOffices,
       },
       failedOffices: {
         count: failedOffices.length,
-        offices: failedOffices,
+        offices: failedOffices.map((o) => o.officeName),
+        details: failedOffices,
       },
       details: results,
     };

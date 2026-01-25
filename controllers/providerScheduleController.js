@@ -183,10 +183,17 @@ exports.getByOfficeAndDOS = async (req, res) => {
       });
     }
 
+    // Normalize date format: Remove leading zeros from month and day
+    // "01/23/2026" → "1/23/2026"
+    // "1/2/2026" → "1/2/2026" (unchanged)
+    const normalizedDOS = dos.replace(/\b0(\d)/g, "$1");
+
+    console.log(`Original DOS: ${dos}, Normalized DOS: ${normalizedDOS}`);
+
     // Find all provider schedules for this office and DOS
     const schedules = await ProviderSchedule.find({
       "office-name": officeValue,
-      dos: dos,
+      dos: normalizedDOS,
     }).select(
       "dos office-name provider-code provider-hygienist provider-code-with-type provider-full-name provider-type updated-on"
     );
