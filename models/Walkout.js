@@ -20,7 +20,7 @@ const appointmentInfoSchema = new mongoose.Schema(
       trim: true,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ====================================
@@ -43,8 +43,22 @@ const officeWalkoutSnipSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // AI Regeneration Tracking
+    aiRegenerationDetails: {
+      totalRegenerateCount: {
+        type: Number,
+        default: 0, // Lifetime count - keeps incrementing
+      },
+      hourlyRegenerateCount: {
+        type: Number,
+        default: 0, // Resets after 1 hour
+      },
+      lastRegeneratedAt: {
+        type: Date, // Timestamp of last regeneration
+      },
+    },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ====================================
@@ -68,7 +82,7 @@ const checkImageSchema = new mongoose.Schema(
       trim: true,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ====================================
@@ -91,8 +105,22 @@ const lc3WalkoutImageSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // AI Regeneration Tracking
+    aiRegenerationDetails: {
+      totalRegenerateCount: {
+        type: Number,
+        default: 0, // Lifetime count - keeps incrementing
+      },
+      hourlyRegenerateCount: {
+        type: Number,
+        default: 0, // Resets after 1 hour
+      },
+      lastRegeneratedAt: {
+        type: Date, // Timestamp of last regeneration
+      },
+    },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ====================================
@@ -118,7 +146,7 @@ const officeHistoricalNoteSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { _id: true }
+  { _id: true },
 );
 
 // Office Section Schema
@@ -283,7 +311,7 @@ const officeSectionSchema = new mongoose.Schema(
       type: Date,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ====================================
@@ -302,7 +330,7 @@ const lc3FailedRuleSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // Historical Note Schema for LC3 Section
@@ -323,7 +351,7 @@ const lc3HistoricalNoteSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { _id: true }
+  { _id: true },
 );
 
 // LC3 Section Schema
@@ -573,6 +601,11 @@ const lc3SectionSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+      // AI Check Status
+      checkedByAi: {
+        type: Boolean,
+        default: false, // Indicates if notes were verified using AI
+      },
       // Provider and Hygienist Notes Textareas
       providerNotes: {
         type: String,
@@ -612,7 +645,7 @@ const lc3SectionSchema = new mongoose.Schema(
       ref: "User",
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // Audit Section Schema (placeholder for now)
@@ -624,7 +657,7 @@ const auditSectionSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // Main Walkout Schema
@@ -724,7 +757,7 @@ const walkoutSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "walkouts",
-  }
+  },
 );
 
 // Indexes for faster queries

@@ -39,6 +39,13 @@ app.use("/api/provider-schedule", require("./routes/providerScheduleRoutes"));
 app.use("/api/radio-buttons", require("./routes/radioButtonRoutes"));
 app.use("/api/dropdowns", require("./routes/dropdownRoutes"));
 app.use("/api/walkouts", require("./routes/walkoutRoutes"));
+app.use("/api/provider-note-ai", require("./routes/providerNoteAiRoutes"));
+app.use("/api/ai", require("./routes/providerNoteAiRoutes")); // Backward compatibility
+app.use(
+  "/api/office-walkout-ai",
+  require("./routes/officeWalkoutImageAiRoutes"),
+);
+app.use("/api/lc3-walkout-ai", require("./routes/lc3WalkoutImageAiRoutes"));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

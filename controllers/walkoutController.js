@@ -539,11 +539,35 @@ exports.submitOfficeSection = async (req, res) => {
           "officeWalkoutSnip", // Folder type
         );
 
+        // Extract data from image using AI (only for new uploads)
+        let aiExtractedData = undefined;
+        try {
+          console.log(
+            "🤖 Extracting data from office walkout image using AI...",
+          );
+          const {
+            extractOfficeWalkoutData,
+          } = require("./officeWalkoutImageAiController");
+          const extractedJson = await extractOfficeWalkoutData(
+            uploadResult.fileKey,
+          );
+          aiExtractedData = JSON.stringify(extractedJson); // Store as JSON string
+          console.log(
+            `✅ AI extraction successful - extracted ${extractedJson.data?.length || 0} rows`,
+          );
+        } catch (aiError) {
+          console.error(
+            "⚠️ AI extraction failed (continuing without extracted data):",
+            aiError.message,
+          );
+          // Continue without extracted data - don't block the upload
+        }
+
         officeWalkoutSnipData = {
           imageId: uploadResult.fileKey, // S3 key instead of Drive file ID
           fileName: uploadResult.fileName,
           uploadedAt: uploadResult.uploadedAt,
-          extractedData: extractedData || undefined,
+          extractedData: aiExtractedData || extractedData || undefined,
         };
 
         console.log(
@@ -568,9 +592,9 @@ exports.submitOfficeSection = async (req, res) => {
     if (req.files && req.files.checkImage) {
       try {
         const file = req.files.checkImage[0];
-        console.log("📤 Uploading check image to Google Drive...");
+        console.log("📤 Uploading check image to S3...");
 
-        const uploadResult = await uploadToGoogleDrive(
+        const uploadResult = await uploadToS3(
           file.buffer,
           file.originalname,
           file.mimetype,
@@ -579,17 +603,17 @@ exports.submitOfficeSection = async (req, res) => {
         );
 
         checkImageData = {
-          imageId: uploadResult.fileId,
+          imageId: uploadResult.fileKey, // S3 key instead of Drive file ID
           fileName: uploadResult.fileName,
           uploadedAt: uploadResult.uploadedAt,
         };
 
-        console.log(`✅ Check Image uploaded. File ID: ${uploadResult.fileId}`);
+        console.log(`✅ Check Image uploaded. S3 Key: ${uploadResult.fileKey}`);
       } catch (uploadError) {
         console.error("❌ Check Image upload failed:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Failed to upload Check Image to Google Drive",
+          message: "Failed to upload Check Image to S3",
           error: uploadError.message,
         });
       }
@@ -895,9 +919,9 @@ exports.updateOfficeSection = async (req, res) => {
     if (req.files && req.files.checkImage) {
       try {
         const file = req.files.checkImage[0];
-        console.log("📤 Uploading new check image to Google Drive...");
+        console.log("📤 Uploading new check image to S3...");
 
-        const uploadResult = await uploadToGoogleDrive(
+        const uploadResult = await uploadToS3(
           file.buffer,
           file.originalname,
           file.mimetype,
@@ -906,16 +930,16 @@ exports.updateOfficeSection = async (req, res) => {
         );
 
         // Update image data
-        walkout.checkImage.imageId = uploadResult.fileId;
+        walkout.checkImage.imageId = uploadResult.fileKey; // S3 key
         walkout.checkImage.fileName = uploadResult.fileName;
         walkout.checkImage.uploadedAt = uploadResult.uploadedAt;
 
-        console.log(`✅ Check Image updated. File ID: ${uploadResult.fileId}`);
+        console.log(`✅ Check Image updated. S3 Key: ${uploadResult.fileKey}`);
       } catch (uploadError) {
         console.error("❌ Check Image upload failed:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Failed to upload Check Image to Google Drive",
+          message: "Failed to upload Check Image to S3",
           error: uploadError.message,
         });
       }
@@ -959,6 +983,14 @@ exports.updateOfficeSection = async (req, res) => {
 // Submit/Update LC3 Section
 exports.submitLc3Section = async (req, res) => {
   try {
+    console.log("🔷 LC3 Section Submit - Starting...");
+    console.log("📋 Request Params:", req.params);
+    console.log("📋 Request Body Keys:", Object.keys(req.body));
+    console.log(
+      "📋 Request File:",
+      req.file ? `Yes (${req.file.originalname})` : "No",
+    );
+
     const { id } = req.params;
     const userId = req.user._id;
 
@@ -1113,6 +1145,18 @@ exports.submitLc3Section = async (req, res) => {
     // ====================================
     // LC3 WALKOUT IMAGE UPLOAD TO S3 (if provided)
     // ====================================
+    console.log("🔍 Checking for LC3 image upload...");
+    console.log("📋 req.file exists:", !!req.file);
+    console.log("📋 req.files exists:", !!req.files);
+    if (req.file) {
+      console.log("📋 req.file details:", {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+      });
+    }
+
     if (req.file) {
       try {
         console.log("📤 Uploading LC3 walkout image to S3...");
@@ -1127,15 +1171,38 @@ exports.submitLc3Section = async (req, res) => {
           "lc3WalkoutImage", // Folder type
         );
 
+        // Extract data from LC3 image using AI (only for new uploads)
+        let aiExtractedData = undefined;
+        try {
+          console.log("🤖 Extracting data from LC3 walkout image using AI...");
+          const {
+            extractLc3WalkoutData,
+          } = require("./lc3WalkoutImageAiController");
+          const extractedJson = await extractLc3WalkoutData(
+            uploadResult.fileKey,
+          );
+          aiExtractedData = JSON.stringify(extractedJson); // Store as JSON string
+          console.log(
+            `✅ AI extraction successful - extracted ${extractedJson.data?.length || 0} rows`,
+          );
+        } catch (aiError) {
+          console.error(
+            "⚠️ AI extraction failed (continuing without extracted data):",
+            aiError.message,
+          );
+          // Continue without extracted data - don't block the upload
+        }
+
         // Update LC3 image data
         walkout.lc3WalkoutImage = {
-          imageId: uploadResult.key, // S3 key
+          imageId: uploadResult.fileKey, // S3 key
           fileName: uploadResult.fileName,
           uploadedAt: uploadResult.uploadedAt,
+          extractedData: aiExtractedData,
         };
 
         console.log(
-          `✅ LC3 Walkout Image uploaded. S3 Key: ${uploadResult.key}`,
+          `✅ LC3 Walkout Image uploaded. S3 Key: ${uploadResult.fileKey}`,
         );
       } catch (uploadError) {
         console.error("❌ LC3 Walkout Image upload failed:", uploadError);
@@ -1217,12 +1284,25 @@ exports.deleteWalkout = async (req, res) => {
 exports.serveImageByImageId = async (req, res) => {
   try {
     const { imageId } = req.params;
-    // const { getFileFromDrive } = require("../utils/driveUpload"); // Google Drive (old)
-    const { getFileFromS3 } = require("../utils/s3Upload"); // AWS S3 (new)
+    const { getFileFromS3 } = require("../utils/s3Upload");
 
-    console.log(`🖼️ Fetching image from S3 with key: ${imageId}`);
+    console.log(`🖼️ Fetching image with ID: ${imageId}`);
 
-    // Fetch file from S3 (imageId is now S3 key)
+    // Check if this is a legacy Google Drive ID (no slashes, alphanumeric format)
+    const isGoogleDriveId =
+      !imageId.includes("/") && /^[a-zA-Z0-9_-]+$/.test(imageId);
+
+    if (isGoogleDriveId) {
+      console.log(`⚠️ Legacy Google Drive file ID detected: ${imageId}`);
+      return res.status(410).json({
+        success: false,
+        message:
+          "This image was uploaded to Google Drive and is no longer accessible. Please re-upload the image.",
+        errorCode: "LEGACY_GOOGLE_DRIVE_IMAGE",
+      });
+    }
+
+    // Fetch file from S3 (imageId is S3 key)
     const buffer = await getFileFromS3(imageId);
 
     // Extract file extension and determine MIME type
@@ -1258,7 +1338,7 @@ exports.serveImageByImageId = async (req, res) => {
     ) {
       return res.status(404).json({
         success: false,
-        message: "Image not found",
+        message: "Image not found in S3 storage",
       });
     }
 
@@ -1295,6 +1375,22 @@ exports.serveWalkoutImage = async (req, res) => {
     }
 
     const imageId = walkout.officeWalkoutSnip.imageId; // S3 key
+
+    // Check if this is a legacy Google Drive ID
+    const isGoogleDriveId =
+      !imageId.includes("/") && /^[a-zA-Z0-9_-]+$/.test(imageId);
+
+    if (isGoogleDriveId) {
+      console.log(
+        `⚠️ Legacy Google Drive file ID detected for walkout ${id}: ${imageId}`,
+      );
+      return res.status(410).json({
+        success: false,
+        message:
+          "This image was uploaded to Google Drive and is no longer accessible. Please re-upload the image.",
+        errorCode: "LEGACY_GOOGLE_DRIVE_IMAGE",
+      });
+    }
 
     // Get image from S3
     console.log(`📥 Fetching image from S3: ${imageId}`);

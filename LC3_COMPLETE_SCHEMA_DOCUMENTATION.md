@@ -321,6 +321,9 @@ providerNotes: {
   noteElement3: Boolean,                 // Checkbox - Element 3 present
   noteElement4: Boolean,                 // Checkbox - Element 4 present
 
+  // ========== AI Check Status ==========
+  checkedByAi: Boolean,                  // Checkbox - Notes verified using AI
+
   // ========== Notes Textareas ==========
   providerNotes: String,                 // Text area - Provider's notes
   hygienistNotes: String                 // Text area - Hygienist's notes
@@ -346,6 +349,12 @@ providerNotes: {
 | `noteElement2` | Boolean | Checkbox - Element 2 present/validated | No       |
 | `noteElement3` | Boolean | Checkbox - Element 3 present/validated | No       |
 | `noteElement4` | Boolean | Checkbox - Element 4 present/validated | No       |
+
+**AI Check Status:**
+
+| Field         | Type    | Description                             | Required |
+| ------------- | ------- | --------------------------------------- | -------- |
+| `checkedByAi` | Boolean | Checkbox - Notes verified/checked by AI | No       |
 
 **Provider and Hygienist Notes Textareas:**
 
@@ -481,6 +490,7 @@ lc3LastUpdatedBy: ObjectId; // Reference to User who last updated
     "noteElement2": true,
     "noteElement3": true,
     "noteElement4": true,
+    "checkedByAi": true,
     "providerNotes": "Patient responded well to treatment.",
     "hygienistNotes": "Oral hygiene improved since last visit."
   },
