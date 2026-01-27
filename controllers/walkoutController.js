@@ -10,6 +10,14 @@ const toNumber = (value) => {
   return isNaN(num) ? value : num;
 };
 
+// Helper function to convert number to boolean (1 = true, 2/0 = false)
+const toBoolean = (value) => {
+  if (value === undefined || value === null || value === "") return value;
+  const num = Number(value);
+  if (isNaN(num)) return value;
+  return num === 1; // 1 = true, anything else (2, 0) = false
+};
+
 // ====================================
 // OFFICE SECTION OPERATIONS
 // ====================================
@@ -135,6 +143,25 @@ exports.submitOfficeSection = async (req, res) => {
     const majorServiceFormNum = toNumber(majorServiceForm);
     const routeSheetNum = toNumber(routeSheet);
     const prcUpdatedInRouteSheetNum = toNumber(prcUpdatedInRouteSheet);
+
+    // Boolean/checkbox fields - convert string "true"/"false" to boolean
+    const signedGeneralConsentBool =
+      signedGeneralConsent === "true" || signedGeneralConsent === true;
+    const signedTreatmentConsentBool =
+      signedTreatmentConsent === "true" || signedTreatmentConsent === true;
+    const preAuthAvailableBool =
+      preAuthAvailable === "true" || preAuthAvailable === true;
+    const signedTxPlanBool = signedTxPlan === "true" || signedTxPlan === true;
+    const perioChartBool = perioChart === "true" || perioChart === true;
+    const nvdBool = nvd === "true" || nvd === true;
+    const xRayPanoAttachedBool =
+      xRayPanoAttached === "true" || xRayPanoAttached === true;
+    const majorServiceFormBool =
+      majorServiceForm === "true" || majorServiceForm === true;
+    const routeSheetBool = routeSheet === "true" || routeSheet === true;
+    const prcUpdatedInRouteSheetBool =
+      prcUpdatedInRouteSheet === "true" || prcUpdatedInRouteSheet === true;
+    const narrativeBool = narrative === "true" || narrative === true;
 
     // Level 1: patientCame is always mandatory
     if (
@@ -432,61 +459,61 @@ exports.submitOfficeSection = async (req, res) => {
 
         // Level 16: Boolean fields - mandatory ones
         if (
-          signedGeneralConsentNum === undefined ||
-          signedGeneralConsentNum === null
+          signedGeneralConsent === undefined ||
+          signedGeneralConsent === null
         ) {
           return res.status(400).json({
             success: false,
             message: "signedGeneralConsent is required",
           });
         }
-        officeData.signedGeneralConsent = signedGeneralConsentNum;
+        officeData.signedGeneralConsent = signedGeneralConsentBool;
 
-        if (signedTxPlanNum === undefined || signedTxPlanNum === null) {
+        if (signedTxPlan === undefined || signedTxPlan === null) {
           return res.status(400).json({
             success: false,
             message: "signedTxPlan is required",
           });
         }
-        officeData.signedTxPlan = signedTxPlanNum;
+        officeData.signedTxPlan = signedTxPlanBool;
 
-        if (xRayPanoAttachedNum === undefined || xRayPanoAttachedNum === null) {
+        if (xRayPanoAttached === undefined || xRayPanoAttached === null) {
           return res.status(400).json({
             success: false,
             message: "xRayPanoAttached is required",
           });
         }
-        officeData.xRayPanoAttached = xRayPanoAttachedNum;
+        officeData.xRayPanoAttached = xRayPanoAttachedBool;
 
         if (
-          prcUpdatedInRouteSheetNum === undefined ||
-          prcUpdatedInRouteSheetNum === null
+          prcUpdatedInRouteSheet === undefined ||
+          prcUpdatedInRouteSheet === null
         ) {
           return res.status(400).json({
             success: false,
             message: "prcUpdatedInRouteSheet is required",
           });
         }
-        officeData.prcUpdatedInRouteSheet = prcUpdatedInRouteSheetNum;
+        officeData.prcUpdatedInRouteSheet = prcUpdatedInRouteSheetBool;
 
-        if (routeSheetNum === undefined || routeSheetNum === null) {
+        if (routeSheet === undefined || routeSheet === null) {
           return res.status(400).json({
             success: false,
             message: "routeSheet is required",
           });
         }
-        officeData.routeSheet = routeSheetNum;
+        officeData.routeSheet = routeSheetBool;
 
         // Optional boolean fields
-        if (signedTreatmentConsentNum !== undefined)
-          officeData.signedTreatmentConsent = signedTreatmentConsentNum;
-        if (preAuthAvailableNum !== undefined)
-          officeData.preAuthAvailable = preAuthAvailableNum;
-        if (perioChartNum !== undefined) officeData.perioChart = perioChartNum;
-        if (nvdNum !== undefined) officeData.nvd = nvdNum;
-        if (majorServiceFormNum !== undefined)
-          officeData.majorServiceForm = majorServiceFormNum;
-        if (narrative !== undefined) officeData.narrative = narrative;
+        if (signedTreatmentConsent !== undefined)
+          officeData.signedTreatmentConsent = signedTreatmentConsentBool;
+        if (preAuthAvailable !== undefined)
+          officeData.preAuthAvailable = preAuthAvailableBool;
+        if (perioChart !== undefined) officeData.perioChart = perioChartBool;
+        if (nvd !== undefined) officeData.nvd = nvdBool;
+        if (majorServiceForm !== undefined)
+          officeData.majorServiceForm = majorServiceFormBool;
+        if (narrative !== undefined) officeData.narrative = narrativeBool;
       }
 
       // Set status to office_submitted and submitToLC3 time
@@ -539,35 +566,11 @@ exports.submitOfficeSection = async (req, res) => {
           "officeWalkoutSnip", // Folder type
         );
 
-        // Extract data from image using AI (only for new uploads)
-        let aiExtractedData = undefined;
-        try {
-          console.log(
-            "🤖 Extracting data from office walkout image using AI...",
-          );
-          const {
-            extractOfficeWalkoutData,
-          } = require("./officeWalkoutImageAiController");
-          const extractedJson = await extractOfficeWalkoutData(
-            uploadResult.fileKey,
-          );
-          aiExtractedData = JSON.stringify(extractedJson); // Store as JSON string
-          console.log(
-            `✅ AI extraction successful - extracted ${extractedJson.data?.length || 0} rows`,
-          );
-        } catch (aiError) {
-          console.error(
-            "⚠️ AI extraction failed (continuing without extracted data):",
-            aiError.message,
-          );
-          // Continue without extracted data - don't block the upload
-        }
-
         officeWalkoutSnipData = {
           imageId: uploadResult.fileKey, // S3 key instead of Drive file ID
           fileName: uploadResult.fileName,
           uploadedAt: uploadResult.uploadedAt,
-          extractedData: aiExtractedData || extractedData || undefined,
+          extractedData: extractedData || undefined, // Use manually provided data if available
         };
 
         console.log(
@@ -637,6 +640,54 @@ exports.submitOfficeSection = async (req, res) => {
       .populate("userId", "name email")
       .populate("officeSection.officeSubmittedBy", "name email")
       .populate("officeSection.officeHistoricalNotes.addedBy", "name email");
+
+    // ====================================
+    // BACKGROUND AI EXTRACTION (if new image was uploaded)
+    // ====================================
+    if (
+      req.files &&
+      req.files.officeWalkoutSnip &&
+      officeWalkoutSnipData.imageId
+    ) {
+      const walkoutId = walkout._id;
+      const s3Key = officeWalkoutSnipData.imageId;
+
+      // Run AI extraction in background (don't await)
+      console.log(
+        `🤖 Starting background AI extraction for walkout ${walkoutId}...`,
+      );
+
+      // Fire and forget - this runs in background
+      (async () => {
+        try {
+          const {
+            extractOfficeWalkoutData,
+          } = require("./officeWalkoutImageAiController");
+
+          console.log(
+            `🤖 Extracting data from office walkout image (${s3Key})...`,
+          );
+
+          const extractedJson = await extractOfficeWalkoutData(s3Key);
+          const aiExtractedData = JSON.stringify(extractedJson);
+
+          // Update the walkout document with extracted data
+          await Walkout.findByIdAndUpdate(walkoutId, {
+            "officeWalkoutSnip.extractedData": aiExtractedData,
+          });
+
+          console.log(
+            `✅ Background AI extraction completed for walkout ${walkoutId} - extracted ${extractedJson.data?.length || 0} rows`,
+          );
+        } catch (aiError) {
+          console.error(
+            `⚠️ Background AI extraction failed for walkout ${walkoutId}:`,
+            aiError.message,
+          );
+          // Don't throw error - just log it
+        }
+      })();
+    }
 
     res.status(201).json({
       success: true,
@@ -737,41 +788,68 @@ exports.updateOfficeSection = async (req, res) => {
     // Convert FormData string values to proper types
     const convertedBody = {
       ...req.body,
+      // Radio button fields - convert to Number
       patientCame: toNumber(req.body.patientCame),
       postOpZeroProduction: toNumber(req.body.postOpZeroProduction),
-      patientType: req.body.patientType,
-      hasInsurance: req.body.hasInsurance,
-      insuranceType: req.body.insuranceType,
-      insurance: req.body.insurance,
-      googleReviewRequest: req.body.googleReviewRequest,
+      patientType: toNumber(req.body.patientType),
+      hasInsurance: toNumber(req.body.hasInsurance),
+      insuranceType: toNumber(req.body.insuranceType),
+      insurance: toNumber(req.body.insurance),
+      googleReviewRequest: toNumber(req.body.googleReviewRequest),
+      ruleEngineRun: toNumber(req.body.ruleEngineRun),
+      ruleEngineError: toNumber(req.body.ruleEngineError),
+      issuesFixed: toNumber(req.body.issuesFixed),
+
+      // Dropdown fields - convert to Number
+      patientPortionPrimaryMode: toNumber(req.body.patientPortionPrimaryMode),
+      patientPortionSecondaryMode: toNumber(
+        req.body.patientPortionSecondaryMode,
+      ),
+      reasonLessCollection: toNumber(req.body.reasonLessCollection),
+      ruleEngineNotRunReason: toNumber(req.body.ruleEngineNotRunReason),
+
+      // Amount/Number fields - convert to Number
       expectedPatientPortionOfficeWO: toNumber(
         req.body.expectedPatientPortionOfficeWO,
       ),
       patientPortionCollected: toNumber(req.body.patientPortionCollected),
       differenceInPatientPortion: toNumber(req.body.differenceInPatientPortion),
-      patientPortionPrimaryMode: req.body.patientPortionPrimaryMode,
       amountCollectedPrimaryMode: toNumber(req.body.amountCollectedPrimaryMode),
-      patientPortionSecondaryMode: req.body.patientPortionSecondaryMode,
       amountCollectedSecondaryMode: toNumber(
         req.body.amountCollectedSecondaryMode,
       ),
-      lastFourDigitsCheckForte: req.body.lastFourDigitsCheckForte,
-      reasonLessCollection: req.body.reasonLessCollection,
-      ruleEngineRun: req.body.ruleEngineRun,
-      ruleEngineNotRunReason: req.body.ruleEngineNotRunReason,
-      ruleEngineError: req.body.ruleEngineError,
+      lastFourDigitsCheckForte: toNumber(req.body.lastFourDigitsCheckForte),
+
+      // Boolean fields - convert "true"/"false" strings to boolean
+      signedGeneralConsent:
+        req.body.signedGeneralConsent === "true" ||
+        req.body.signedGeneralConsent === true,
+      signedTreatmentConsent:
+        req.body.signedTreatmentConsent === "true" ||
+        req.body.signedTreatmentConsent === true,
+      preAuthAvailable:
+        req.body.preAuthAvailable === "true" ||
+        req.body.preAuthAvailable === true,
+      signedTxPlan:
+        req.body.signedTxPlan === "true" || req.body.signedTxPlan === true,
+      perioChart:
+        req.body.perioChart === "true" || req.body.perioChart === true,
+      nvd: req.body.nvd === "true" || req.body.nvd === true,
+      xRayPanoAttached:
+        req.body.xRayPanoAttached === "true" ||
+        req.body.xRayPanoAttached === true,
+      majorServiceForm:
+        req.body.majorServiceForm === "true" ||
+        req.body.majorServiceForm === true,
+      routeSheet:
+        req.body.routeSheet === "true" || req.body.routeSheet === true,
+      prcUpdatedInRouteSheet:
+        req.body.prcUpdatedInRouteSheet === "true" ||
+        req.body.prcUpdatedInRouteSheet === true,
+      narrative: req.body.narrative === "true" || req.body.narrative === true,
+
+      // String fields - keep as is
       errorFixRemarks: req.body.errorFixRemarks,
-      issuesFixed: req.body.issuesFixed,
-      signedGeneralConsent: req.body.signedGeneralConsent,
-      signedTreatmentConsent: req.body.signedTreatmentConsent,
-      preAuthAvailable: req.body.preAuthAvailable,
-      signedTxPlan: req.body.signedTxPlan,
-      perioChart: req.body.perioChart,
-      nvd: req.body.nvd,
-      xRayPanoAttached: req.body.xRayPanoAttached,
-      majorServiceForm: req.body.majorServiceForm,
-      routeSheet: req.body.routeSheet,
-      prcUpdatedInRouteSheet: req.body.prcUpdatedInRouteSheet,
       narrative: req.body.narrative,
       newOfficeNote: req.body.newOfficeNote,
       extractedData: req.body.extractedData,
@@ -884,12 +962,15 @@ exports.updateOfficeSection = async (req, res) => {
     // ====================================
 
     // Handle Office Walkout Snip update
+    let newImageUploaded = false;
+    let newImageS3Key = null;
+
     if (req.files && req.files.officeWalkoutSnip) {
       try {
         const file = req.files.officeWalkoutSnip[0];
-        console.log("📤 Uploading new office walkout snip to Google Drive...");
+        console.log("📤 Uploading new office walkout snip to S3...");
 
-        const uploadResult = await uploadToGoogleDrive(
+        const uploadResult = await uploadToS3(
           file.buffer,
           file.originalname,
           file.mimetype,
@@ -897,19 +978,23 @@ exports.updateOfficeSection = async (req, res) => {
           "officeWalkoutSnip",
         );
 
-        // Update image data
-        walkout.officeWalkoutSnip.imageId = uploadResult.fileId;
+        // Update image data (without AI extracted data for now)
+        walkout.officeWalkoutSnip.imageId = uploadResult.fileKey;
         walkout.officeWalkoutSnip.fileName = uploadResult.fileName;
         walkout.officeWalkoutSnip.uploadedAt = uploadResult.uploadedAt;
+        walkout.officeWalkoutSnip.extractedData = undefined; // Will be updated in background
+
+        newImageUploaded = true;
+        newImageS3Key = uploadResult.fileKey;
 
         console.log(
-          `✅ Office Walkout Snip updated. File ID: ${uploadResult.fileId}`,
+          `✅ Office Walkout Snip updated. S3 Key: ${uploadResult.fileKey}`,
         );
       } catch (uploadError) {
         console.error("❌ Office Walkout Snip upload failed:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Failed to upload Office Walkout Snip to Google Drive",
+          message: "Failed to upload Office Walkout Snip to S3",
           error: uploadError.message,
         });
       }
@@ -960,6 +1045,44 @@ exports.updateOfficeSection = async (req, res) => {
       .populate("userId", "name email")
       .populate("officeSection.officeSubmittedBy", "name email")
       .populate("officeSection.officeHistoricalNotes.addedBy", "name email");
+
+    // ====================================
+    // BACKGROUND AI EXTRACTION (if new image was uploaded)
+    // ====================================
+    if (newImageUploaded && newImageS3Key) {
+      console.log(`🤖 Starting background AI extraction for walkout ${id}...`);
+
+      // Fire and forget - this runs in background
+      (async () => {
+        try {
+          const {
+            extractOfficeWalkoutData,
+          } = require("./officeWalkoutImageAiController");
+
+          console.log(
+            `🤖 Extracting data from new office walkout image (${newImageS3Key})...`,
+          );
+
+          const extractedJson = await extractOfficeWalkoutData(newImageS3Key);
+          const aiExtractedData = JSON.stringify(extractedJson);
+
+          // Update the walkout document with extracted data
+          await Walkout.findByIdAndUpdate(id, {
+            "officeWalkoutSnip.extractedData": aiExtractedData,
+          });
+
+          console.log(
+            `✅ Background AI extraction completed for walkout ${id} - extracted ${extractedJson.data?.length || 0} rows`,
+          );
+        } catch (aiError) {
+          console.error(
+            `⚠️ Background AI extraction failed for walkout ${id}:`,
+            aiError.message,
+          );
+          // Don't throw error - just log it
+        }
+      })();
+    }
 
     res.status(200).json({
       success: true,
@@ -1157,6 +1280,9 @@ exports.submitLc3Section = async (req, res) => {
       });
     }
 
+    let lc3ImageUploaded = false;
+    let lc3ImageS3Key = null;
+
     if (req.file) {
       try {
         console.log("📤 Uploading LC3 walkout image to S3...");
@@ -1171,35 +1297,16 @@ exports.submitLc3Section = async (req, res) => {
           "lc3WalkoutImage", // Folder type
         );
 
-        // Extract data from LC3 image using AI (only for new uploads)
-        let aiExtractedData = undefined;
-        try {
-          console.log("🤖 Extracting data from LC3 walkout image using AI...");
-          const {
-            extractLc3WalkoutData,
-          } = require("./lc3WalkoutImageAiController");
-          const extractedJson = await extractLc3WalkoutData(
-            uploadResult.fileKey,
-          );
-          aiExtractedData = JSON.stringify(extractedJson); // Store as JSON string
-          console.log(
-            `✅ AI extraction successful - extracted ${extractedJson.data?.length || 0} rows`,
-          );
-        } catch (aiError) {
-          console.error(
-            "⚠️ AI extraction failed (continuing without extracted data):",
-            aiError.message,
-          );
-          // Continue without extracted data - don't block the upload
-        }
-
-        // Update LC3 image data
+        // Update LC3 image data (without AI extracted data for now)
         walkout.lc3WalkoutImage = {
           imageId: uploadResult.fileKey, // S3 key
           fileName: uploadResult.fileName,
           uploadedAt: uploadResult.uploadedAt,
-          extractedData: aiExtractedData,
+          extractedData: undefined, // Will be updated in background
         };
+
+        lc3ImageUploaded = true;
+        lc3ImageS3Key = uploadResult.fileKey;
 
         console.log(
           `✅ LC3 Walkout Image uploaded. S3 Key: ${uploadResult.fileKey}`,
@@ -1229,6 +1336,46 @@ exports.submitLc3Section = async (req, res) => {
 
     // Save the walkout
     await walkout.save();
+
+    // ====================================
+    // BACKGROUND AI EXTRACTION (if new LC3 image was uploaded)
+    // ====================================
+    if (lc3ImageUploaded && lc3ImageS3Key) {
+      console.log(
+        `🤖 Starting background AI extraction for LC3 walkout ${id}...`,
+      );
+
+      // Fire and forget - this runs in background
+      (async () => {
+        try {
+          const {
+            extractLc3WalkoutData,
+          } = require("./lc3WalkoutImageAiController");
+
+          console.log(
+            `🤖 Extracting data from LC3 walkout image (${lc3ImageS3Key})...`,
+          );
+
+          const extractedJson = await extractLc3WalkoutData(lc3ImageS3Key);
+          const aiExtractedData = JSON.stringify(extractedJson);
+
+          // Update the walkout document with extracted data
+          await Walkout.findByIdAndUpdate(id, {
+            "lc3WalkoutImage.extractedData": aiExtractedData,
+          });
+
+          console.log(
+            `✅ Background AI extraction completed for LC3 walkout ${id} - extracted ${extractedJson.data?.length || 0} rows`,
+          );
+        } catch (aiError) {
+          console.error(
+            `⚠️ Background AI extraction failed for LC3 walkout ${id}:`,
+            aiError.message,
+          );
+          // Don't throw error - just log it
+        }
+      })();
+    }
 
     res.status(200).json({
       success: true,

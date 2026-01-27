@@ -362,7 +362,8 @@ const validateOfficeSection = (data) => {
         message: "Signed General Consent is required",
       });
     } else {
-      cleanData.signedGeneralConsent = signedGeneralConsent;
+      cleanData.signedGeneralConsent =
+        signedGeneralConsent === "true" || signedGeneralConsent === true;
     }
 
     if (signedTxPlan === undefined || signedTxPlan === null) {
@@ -372,7 +373,7 @@ const validateOfficeSection = (data) => {
         message: "Signed Treatment Plan is required",
       });
     } else {
-      cleanData.signedTxPlan = signedTxPlan;
+      cleanData.signedTxPlan = signedTxPlan === "true" || signedTxPlan === true;
     }
 
     if (xRayPanoAttached === undefined || xRayPanoAttached === null) {
@@ -382,7 +383,8 @@ const validateOfficeSection = (data) => {
         message: "X-Ray/Pano Attached is required",
       });
     } else {
-      cleanData.xRayPanoAttached = xRayPanoAttached;
+      cleanData.xRayPanoAttached =
+        xRayPanoAttached === "true" || xRayPanoAttached === true;
     }
 
     if (
@@ -395,7 +397,8 @@ const validateOfficeSection = (data) => {
         message: "PRC Updated in Route Sheet is required",
       });
     } else {
-      cleanData.prcUpdatedInRouteSheet = prcUpdatedInRouteSheet;
+      cleanData.prcUpdatedInRouteSheet =
+        prcUpdatedInRouteSheet === "true" || prcUpdatedInRouteSheet === true;
     }
 
     if (routeSheet === undefined || routeSheet === null) {
@@ -405,19 +408,24 @@ const validateOfficeSection = (data) => {
         message: "Route Sheet is required",
       });
     } else {
-      cleanData.routeSheet = routeSheet;
+      cleanData.routeSheet = routeSheet === "true" || routeSheet === true;
     }
 
     // Optional boolean fields - only save if provided
     if (signedTreatmentConsent !== undefined)
-      cleanData.signedTreatmentConsent = signedTreatmentConsent;
+      cleanData.signedTreatmentConsent =
+        signedTreatmentConsent === "true" || signedTreatmentConsent === true;
     if (preAuthAvailable !== undefined)
-      cleanData.preAuthAvailable = preAuthAvailable;
-    if (perioChart !== undefined) cleanData.perioChart = perioChart;
-    if (nvd !== undefined) cleanData.nvd = nvd;
+      cleanData.preAuthAvailable =
+        preAuthAvailable === "true" || preAuthAvailable === true;
+    if (perioChart !== undefined)
+      cleanData.perioChart = perioChart === "true" || perioChart === true;
+    if (nvd !== undefined) cleanData.nvd = nvd === "true" || nvd === true;
     if (majorServiceForm !== undefined)
-      cleanData.majorServiceForm = majorServiceForm;
-    if (narrative !== undefined) cleanData.narrative = narrative;
+      cleanData.majorServiceForm =
+        majorServiceForm === "true" || majorServiceForm === true;
+    if (narrative !== undefined)
+      cleanData.narrative = narrative === "true" || narrative === true;
   }
 
   return {
