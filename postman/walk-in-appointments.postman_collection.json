@@ -1,0 +1,330 @@
+{
+  "info": {
+    "name": "Walk-in Appointments API",
+    "description": "API collection for creating, updating, and deleting walk-in/unscheduled patient appointments",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Walk-in Appointment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}",
+            "description": "User, Admin, or SuperAdmin token"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patient-id\": \"1245\",\n  \"patient-name\": \"John Doe\",\n  \"dos\": \"2025-12-02\",\n  \"chair-name\": \"Chair 1\",\n  \"insurance-name\": \"Blue Cross Blue Shield\",\n  \"insurance-type\": \"PPO\",\n  \"office-name\": \"Downtown Dental Office\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/appointments/walk-in",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "appointments", "walk-in"]
+        },
+        "description": "Creates a new walk-in appointment. Checks for duplicate appointments with same DOS and patient-id.\n\n**Access**: Admin, SuperAdmin, User\n\n**Validations**:\n- All fields are required\n- DOS format: YYYY-MM-DD (string)\n- patient-id must be unique for the given DOS\n\n**Auto-populated fields**:\n- mode: \"manual\"\n- createdOn: current timestamp\n- createdBy: user ID from token\n- updated-on: current timestamp"
+      },
+      "response": [
+        {
+          "name": "Success - Created",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient-id\": \"1245\",\n  \"patient-name\": \"John Doe\",\n  \"dos\": \"2025-12-02\",\n  \"chair-name\": \"Chair 1\",\n  \"insurance-name\": \"Blue Cross Blue Shield\",\n  \"insurance-type\": \"PPO\",\n  \"office-name\": \"Downtown Dental Office\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments", "walk-in"]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Walk-in appointment created successfully\",\n  \"data\": {\n    \"_id\": \"507f1f77bcf86cd799439011\",\n    \"patient-id\": \"1245\",\n    \"patient-name\": \"John Doe\",\n    \"dos\": \"2025-12-02\",\n    \"chair-name\": \"Chair 1\",\n    \"insurance-name\": \"Blue Cross Blue Shield\",\n    \"insurance-type\": \"PPO\",\n    \"office-name\": \"Downtown Dental Office\",\n    \"updated-on\": \"2025-01-30T10:30:00.000Z\",\n    \"mode\": \"manual\",\n    \"createdOn\": \"2025-01-30T10:30:00.000Z\",\n    \"createdBy\": \"507f191e810c19729de860ea\"\n  }\n}"
+        },
+        {
+          "name": "Error - Duplicate Appointment",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient-id\": \"1245\",\n  \"patient-name\": \"John Doe\",\n  \"dos\": \"2025-12-02\",\n  \"chair-name\": \"Chair 1\",\n  \"insurance-name\": \"Blue Cross Blue Shield\",\n  \"insurance-type\": \"PPO\",\n  \"office-name\": \"Downtown Dental Office\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments", "walk-in"]
+            }
+          },
+          "status": "Conflict",
+          "code": 409,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Appointment already exists for this patient on this date\",\n  \"data\": {\n    \"_id\": \"507f1f77bcf86cd799439011\",\n    \"patient-id\": \"1245\",\n    \"dos\": \"2025-12-02\",\n    ...\n  }\n}"
+        },
+        {
+          "name": "Error - Missing Fields",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient-id\": \"1245\",\n  \"patient-name\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments", "walk-in"]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": false,\n  \"message\": \"All fields are required\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update Walk-in Appointment",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}",
+            "description": "SuperAdmin token only"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patient-name\": \"Jane Doe\",\n  \"dos\": \"2025-12-03\",\n  \"chair-name\": \"Chair 2\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/appointments/walk-in/:id",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "appointments", "walk-in", ":id"],
+          "variable": [
+            {
+              "key": "id",
+              "value": "507f1f77bcf86cd799439011",
+              "description": "Appointment MongoDB ObjectId"
+            }
+          ]
+        },
+        "description": "Updates an existing walk-in appointment. Only manual appointments can be updated.\n\n**Access**: SuperAdmin only\n\n**Rules**:\n- All fields are optional\n- Only appointments with mode=\"manual\" can be updated\n- If DOS or patient-id changes, checks for duplicates\n- updated-on timestamp is refreshed\n- createdOn and createdBy remain unchanged"
+      },
+      "response": [
+        {
+          "name": "Success - Updated",
+          "originalRequest": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient-name\": \"Jane Doe\",\n  \"chair-name\": \"Chair 2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "appointments",
+                "walk-in",
+                "507f1f77bcf86cd799439011"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Walk-in appointment updated successfully\",\n  \"data\": {\n    \"_id\": \"507f1f77bcf86cd799439011\",\n    \"patient-id\": \"1245\",\n    \"patient-name\": \"Jane Doe\",\n    \"dos\": \"2025-12-02\",\n    \"chair-name\": \"Chair 2\",\n    \"insurance-name\": \"Blue Cross Blue Shield\",\n    \"insurance-type\": \"PPO\",\n    \"office-name\": \"Downtown Dental Office\",\n    \"updated-on\": \"2025-01-30T11:45:00.000Z\",\n    \"mode\": \"manual\",\n    \"createdOn\": \"2025-01-30T10:30:00.000Z\",\n    \"createdBy\": \"507f191e810c19729de860ea\"\n  }\n}"
+        },
+        {
+          "name": "Error - Not Manual Appointment",
+          "originalRequest": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient-name\": \"Jane Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "appointments",
+                "walk-in",
+                "507f1f77bcf86cd799439011"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Only manually created appointments can be updated\"\n}"
+        },
+        {
+          "name": "Error - Not Found",
+          "originalRequest": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient-name\": \"Jane Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in/507f1f77bcf86cd799439099",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "appointments",
+                "walk-in",
+                "507f1f77bcf86cd799439099"
+              ]
+            }
+          },
+          "status": "Not Found",
+          "code": 404,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Appointment not found\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Delete Walk-in Appointment",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}",
+            "description": "SuperAdmin token only"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/appointments/walk-in/:id",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "appointments", "walk-in", ":id"],
+          "variable": [
+            {
+              "key": "id",
+              "value": "507f1f77bcf86cd799439011",
+              "description": "Appointment MongoDB ObjectId"
+            }
+          ]
+        },
+        "description": "Deletes a walk-in appointment. Only manual appointments can be deleted.\n\n**Access**: SuperAdmin only\n\n**Rules**:\n- Only appointments with mode=\"manual\" can be deleted\n- ES-Query appointments (from cron) cannot be deleted\n- Deletion is permanent"
+      },
+      "response": [
+        {
+          "name": "Success - Deleted",
+          "originalRequest": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "appointments",
+                "walk-in",
+                "507f1f77bcf86cd799439011"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Walk-in appointment deleted successfully\"\n}"
+        },
+        {
+          "name": "Error - Not Manual Appointment",
+          "originalRequest": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "appointments",
+                "walk-in",
+                "507f1f77bcf86cd799439011"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Only manually created appointments can be deleted\"\n}"
+        },
+        {
+          "name": "Error - Not Found",
+          "originalRequest": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/walk-in/507f1f77bcf86cd799439099",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "appointments",
+                "walk-in",
+                "507f1f77bcf86cd799439099"
+              ]
+            }
+          },
+          "status": "Not Found",
+          "code": 404,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Appointment not found\"\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

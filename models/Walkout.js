@@ -307,8 +307,21 @@ const officeSectionSchema = new mongoose.Schema(
     officeSubmittedAt: {
       type: Date,
     },
+    officeFirstSubmittedAt: {
+      type: Date,
+      // Set only on first submit, never updated after that
+    },
+    officeFirstSubmittedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      // Set only on first submit, never updated after that
+    },
     officeLastUpdatedAt: {
       type: Date,
+    },
+    officeLastUpdatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { _id: false },
@@ -326,8 +339,7 @@ const lc3FailedRuleSchema = new mongoose.Schema(
       trim: true,
     },
     resolved: {
-      type: Boolean,
-      default: false,
+      type: Number, // Radio button incrementalId (1 = Yes/Resolved, 2 = No/Not Resolved)
     },
   },
   { _id: false },
@@ -352,6 +364,29 @@ const lc3HistoricalNoteSchema = new mongoose.Schema(
     },
   },
   { _id: true },
+);
+
+// Session Tracking Schema for LC3 Section
+const lc3SessionSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    startDateTime: {
+      type: Date,
+      required: true,
+    },
+    endDateTime: {
+      type: Date,
+    },
+    duration: {
+      type: Number, // Duration in seconds
+      default: 0,
+    },
+  },
+  { _id: true, timestamps: true },
 );
 
 // LC3 Section Schema
@@ -629,6 +664,18 @@ const lc3SectionSchema = new mongoose.Schema(
     // On-Hold Notes Array (with user tracking)
     onHoldNotes: [lc3HistoricalNoteSchema],
 
+    // Session Tracking (Time tracking for LC3 work)
+    sessions: {
+      list: {
+        type: [lc3SessionSchema],
+        default: [],
+      },
+      total: {
+        type: Number, // Total duration in seconds across all sessions
+        default: 0,
+      },
+    },
+
     // Submission Metadata
     lc3SubmittedAt: {
       type: Date,
@@ -644,6 +691,15 @@ const lc3SectionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    lc3CompletedAt: {
+      type: Date,
+      // Set only once when LC3 section is marked as completed, never updated after that
+    },
+    lc3CompletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      // Set only once when LC3 section is marked as completed, never updated after that
+    },
   },
   { _id: false },
 );
@@ -655,6 +711,14 @@ const auditSectionSchema = new mongoose.Schema(
     placeholder: {
       type: String,
       default: null,
+    },
+    // Metadata
+    auditLastUpdatedAt: {
+      type: Date,
+    },
+    auditLastUpdatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { _id: false },
@@ -733,19 +797,24 @@ const walkoutSchema = new mongoose.Schema(
       default: {},
     },
 
-    // Overall walkout status
+    // Overall walkout status (updated from frontend when office or LC3 section updates)
     walkoutStatus: {
       type: String,
-      enum: [
-        "draft",
-        "office_submitted",
-        "lc3_pending",
-        "lc3_submitted",
-        "audit_pending",
-        "completed",
-        "patient_not_came",
-      ],
+      trim: true,
       default: "draft",
+    },
+
+    // On-hold addressed status (updated from frontend when office or LC3 section updates)
+    isOnHoldAddressed: {
+      type: String,
+      enum: ["yes", "no"],
+      trim: true,
+    },
+
+    // Pending with (updated from frontend when office or LC3 section updates)
+    pendingWith: {
+      type: String,
+      trim: true,
     },
 
     // Soft delete flag

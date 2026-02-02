@@ -1,4 +1,5 @@
 const Walkout = require("../models/Walkout");
+const PatientAppointment = require("../models/PatientAppointment");
 const validateOfficeSection = require("../utils/validateOfficeSection");
 // const { uploadToGoogleDrive } = require("../utils/driveUpload"); // Google Drive (deprecated)
 const { uploadToS3 } = require("../utils/s3Upload"); // AWS S3 (new)
@@ -63,6 +64,9 @@ exports.submitOfficeSection = async (req, res) => {
       narrative,
       newOfficeNote,
       openTime,
+      walkoutStatus, // Root level - from frontend (can update status)
+      isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
+      pendingWith, // Root level - from frontend
     } = req.body;
 
     // ====================================
@@ -195,12 +199,12 @@ exports.submitOfficeSection = async (req, res) => {
       patientCame: patientCameNum,
     };
 
-    let walkoutStatus = "draft";
+    let walkoutStatusDefault = "draft";
     let submitToLC3Time = null;
 
     // If patient didn't come (patientCame = 2)
     if (patientCameNum === 2) {
-      walkoutStatus = "patient_not_came";
+      walkoutStatusDefault = "patient_not_came";
       // Only save patientCame, rest will be undefined/default
     } else if (patientCameNum === 1) {
       // Patient came - validate other fields
@@ -517,7 +521,7 @@ exports.submitOfficeSection = async (req, res) => {
       }
 
       // Set status to office_submitted and submitToLC3 time
-      walkoutStatus = "office_submitted";
+      walkoutStatusDefault = "office_submitted";
       submitToLC3Time = new Date();
     }
 
@@ -532,10 +536,34 @@ exports.submitOfficeSection = async (req, res) => {
     }
     officeData.officeHistoricalNotes = officeHistoricalNotes;
 
-    // Metadata
+    // Metadata (always set these)
+    const currentTime = new Date();
     officeData.officeSubmittedBy = req.user._id;
-    officeData.officeSubmittedAt = new Date();
-    officeData.officeLastUpdatedAt = new Date();
+    officeData.officeSubmittedAt = currentTime;
+    officeData.officeLastUpdatedAt = currentTime;
+    officeData.officeLastUpdatedBy = req.user._id;
+
+    // First submission tracking (set only once, never updated)
+    officeData.officeFirstSubmittedAt = currentTime;
+    officeData.officeFirstSubmittedBy = req.user._id;
+
+    // ====================================
+    // CALCULATE isWalkoutSubmittedToLC3
+    // ====================================
+    // Logic: Set to "Yes" only if:
+    // - patientCame = 1 (Yes) AND
+    // - postOpZeroProduction = 2 (No)
+    // Otherwise set to "No"
+    let isWalkoutSubmittedToLC3 = "No";
+    console.log("🔍 Checking isWalkoutSubmittedToLC3 conditions:");
+    console.log(`   patientCame: ${officeData.patientCame} (type: ${typeof officeData.patientCame})`);
+    console.log(`   postOpZeroProduction: ${officeData.postOpZeroProduction} (type: ${typeof officeData.postOpZeroProduction})`);
+    if (officeData.patientCame === 1 && officeData.postOpZeroProduction === 2) {
+      isWalkoutSubmittedToLC3 = "Yes";
+      console.log("✅ Conditions matched! Setting isWalkoutSubmittedToLC3 = Yes");
+    } else {
+      console.log("❌ Conditions not matched. Setting isWalkoutSubmittedToLC3 = No");
+    }
 
     // Validate formRefId if provided
     if (formRefId && typeof formRefId !== "string") {
@@ -633,8 +661,32 @@ exports.submitOfficeSection = async (req, res) => {
       submitToLC3: submitToLC3Time,
       lastUpdateOn: new Date(),
       officeSection: officeData,
-      walkoutStatus,
+      walkoutStatus: walkoutStatus || walkoutStatusDefault, // Use frontend value or calculated default
+      isOnHoldAddressed: isOnHoldAddressed || undefined, // Root level - from frontend
+      pendingWith: pendingWith || undefined, // Root level - from frontend
     });
+
+    // ====================================
+    // UPDATE APPOINTMENT isWalkoutSubmittedToLC3
+    // ====================================
+    if (formRefId) {
+      try {
+        console.log(`📝 Updating appointment ${formRefId} with isWalkoutSubmittedToLC3: ${isWalkoutSubmittedToLC3}`);
+        await PatientAppointment.findByIdAndUpdate(formRefId, {
+          isWalkoutSubmittedToLC3: isWalkoutSubmittedToLC3,
+        });
+        console.log(
+          `✅ Updated appointment ${formRefId} - isWalkoutSubmittedToLC3: ${isWalkoutSubmittedToLC3}`,
+        );
+      } catch (updateError) {
+        console.error(
+          `⚠️ Failed to update appointment ${formRefId}:`,
+          updateError.message,
+        );
+      }
+    } else {
+      console.log("⚠️ No formRefId provided, skipping appointment update");
+    }
 
     const populatedWalkout = await Walkout.findById(walkout._id)
       .populate("userId", "name email")
@@ -853,6 +905,9 @@ exports.updateOfficeSection = async (req, res) => {
       narrative: req.body.narrative,
       newOfficeNote: req.body.newOfficeNote,
       extractedData: req.body.extractedData,
+      walkoutStatus: req.body.walkoutStatus, // Root level
+      isOnHoldAddressed: req.body.isOnHoldAddressed, // Root level
+      pendingWith: req.body.pendingWith, // Root level
     };
 
     const {
@@ -890,6 +945,9 @@ exports.updateOfficeSection = async (req, res) => {
       prcUpdatedInRouteSheet,
       narrative,
       newOfficeNote,
+      walkoutStatus, // Root level
+      isOnHoldAddressed, // Root level
+      pendingWith, // Root level
     } = convertedBody;
 
     const walkout = await Walkout.findById(id);
@@ -932,11 +990,16 @@ exports.updateOfficeSection = async (req, res) => {
     const existingNotes = walkout.officeSection.officeHistoricalNotes || [];
     const submittedBy = walkout.officeSection.officeSubmittedBy;
     const submittedAt = walkout.officeSection.officeSubmittedAt;
+    // IMPORTANT: Preserve first submission tracking (never updated)
+    const firstSubmittedAt = walkout.officeSection.officeFirstSubmittedAt;
+    const firstSubmittedBy = walkout.officeSection.officeFirstSubmittedBy;
 
     walkout.officeSection = {
       officeHistoricalNotes: existingNotes,
       officeSubmittedBy: submittedBy,
       officeSubmittedAt: submittedAt,
+      officeFirstSubmittedAt: firstSubmittedAt, // Preserve
+      officeFirstSubmittedBy: firstSubmittedBy, // Preserve
     };
 
     // Set only validated and conditionally required fields
@@ -1037,7 +1100,59 @@ exports.updateOfficeSection = async (req, res) => {
 
     // Update metadata
     walkout.officeSection.officeLastUpdatedAt = new Date();
+    walkout.officeSection.officeLastUpdatedBy = req.user._id;
     walkout.lastUpdateOn = new Date();
+
+    // ====================================
+    // CALCULATE isWalkoutSubmittedToLC3
+    // ====================================
+    // Recalculate based on current values of patientCame and postOpZeroProduction
+    let isWalkoutSubmittedToLC3 = "No";
+    console.log("🔍 UPDATE - Checking isWalkoutSubmittedToLC3 conditions:");
+    console.log(`   patientCame: ${walkout.officeSection.patientCame} (type: ${typeof walkout.officeSection.patientCame})`);
+    console.log(`   postOpZeroProduction: ${walkout.officeSection.postOpZeroProduction} (type: ${typeof walkout.officeSection.postOpZeroProduction})`);
+    if (
+      walkout.officeSection.patientCame === 1 &&
+      walkout.officeSection.postOpZeroProduction === 2
+    ) {
+      isWalkoutSubmittedToLC3 = "Yes";
+      console.log("✅ UPDATE - Conditions matched! Setting isWalkoutSubmittedToLC3 = Yes");
+    } else {
+      console.log("❌ UPDATE - Conditions not matched. Setting isWalkoutSubmittedToLC3 = No");
+    }
+
+    // ====================================
+    // UPDATE APPOINTMENT isWalkoutSubmittedToLC3
+    // ====================================
+    if (walkout.formRefId) {
+      try {
+        console.log(`📝 UPDATE - Updating appointment ${walkout.formRefId} with isWalkoutSubmittedToLC3: ${isWalkoutSubmittedToLC3}`);
+        await PatientAppointment.findByIdAndUpdate(walkout.formRefId, {
+          isWalkoutSubmittedToLC3: isWalkoutSubmittedToLC3,
+        });
+        console.log(
+          `✅ Updated appointment ${walkout.formRefId} - isWalkoutSubmittedToLC3: ${isWalkoutSubmittedToLC3}`,
+        );
+      } catch (updateError) {
+        console.error(
+          `⚠️ Failed to update appointment ${walkout.formRefId}:`,
+          updateError.message,
+        );
+      }
+    } else {
+      console.log("⚠️ UPDATE - No formRefId in walkout, skipping appointment update");
+    }
+
+    // Update root level fields if provided
+    if (walkoutStatus !== undefined) {
+      walkout.walkoutStatus = walkoutStatus;
+    }
+    if (isOnHoldAddressed !== undefined) {
+      walkout.isOnHoldAddressed = isOnHoldAddressed;
+    }
+    if (pendingWith !== undefined) {
+      walkout.pendingWith = pendingWith;
+    }
 
     await walkout.save();
 
@@ -1151,6 +1266,12 @@ exports.submitLc3Section = async (req, res) => {
       providerNotes: providerNotesRaw,
       lc3Remarks,
       onHoldNote,
+      walkoutStatus, // Root level - from frontend (can update status)
+      isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
+      pendingWith, // Root level - from frontend
+      isCompleted, // NEW: Flag to indicate if LC3 is being marked as completed
+      sessionStartDateTime, // NEW: Session tracking - start time from frontend
+      sessionEndDateTime, // NEW: Session tracking - end time from frontend (when submitting)
     } = req.body;
 
     // Parse JSON fields if they are strings
@@ -1266,6 +1387,44 @@ exports.submitLc3Section = async (req, res) => {
     }
 
     // ====================================
+    // SESSION TRACKING (Time tracking for LC3 work)
+    // ====================================
+    if (sessionStartDateTime && sessionEndDateTime) {
+      // Initialize sessions if doesn't exist
+      if (!walkout.lc3Section.sessions) {
+        walkout.lc3Section.sessions = {
+          list: [],
+          total: 0,
+        };
+      }
+
+      const startTime = new Date(sessionStartDateTime);
+      const endTime = new Date(sessionEndDateTime);
+
+      // Calculate duration in seconds
+      const durationSeconds = Math.floor((endTime - startTime) / 1000);
+
+      // Create new session object
+      const newSession = {
+        user: userId,
+        startDateTime: startTime,
+        endDateTime: endTime,
+        duration: durationSeconds,
+      };
+
+      // Add session to list
+      walkout.lc3Section.sessions.list.push(newSession);
+
+      // Update total duration
+      walkout.lc3Section.sessions.total =
+        (walkout.lc3Section.sessions.total || 0) + durationSeconds;
+
+      console.log(
+        `⏱️ Session tracked: ${durationSeconds}s (Total: ${walkout.lc3Section.sessions.total}s)`,
+      );
+    }
+
+    // ====================================
     // LC3 WALKOUT IMAGE UPLOAD TO S3 (if provided)
     // ====================================
     console.log("🔍 Checking for LC3 image upload...");
@@ -1323,16 +1482,37 @@ exports.submitLc3Section = async (req, res) => {
 
     // Update submission metadata
     const isFirstSubmit = !walkout.lc3Section.lc3SubmittedAt;
+    const currentTime = new Date();
 
     if (isFirstSubmit) {
-      walkout.lc3Section.lc3SubmittedAt = new Date();
+      walkout.lc3Section.lc3SubmittedAt = currentTime;
       walkout.lc3Section.lc3SubmittedBy = userId;
       walkout.walkoutStatus = "lc3_submitted";
     }
 
-    walkout.lc3Section.lc3LastUpdatedAt = new Date();
+    walkout.lc3Section.lc3LastUpdatedAt = currentTime;
     walkout.lc3Section.lc3LastUpdatedBy = userId;
-    walkout.lastUpdateOn = new Date();
+    walkout.lastUpdateOn = currentTime;
+
+    // Handle LC3 completion (set only once, never updated after that)
+    if (isCompleted === "true" || isCompleted === true) {
+      // Only set if not already completed
+      if (!walkout.lc3Section.lc3CompletedAt) {
+        walkout.lc3Section.lc3CompletedAt = currentTime;
+        walkout.lc3Section.lc3CompletedBy = userId;
+      }
+    }
+
+    // Update root level fields if provided
+    if (walkoutStatus !== undefined) {
+      walkout.walkoutStatus = walkoutStatus;
+    }
+    if (isOnHoldAddressed !== undefined) {
+      walkout.isOnHoldAddressed = isOnHoldAddressed;
+    }
+    if (pendingWith !== undefined) {
+      walkout.pendingWith = pendingWith;
+    }
 
     // Save the walkout
     await walkout.save();

@@ -251,6 +251,8 @@ const syncOfficeAppointments = async (office, startDate, endDate) => {
             };
 
             // Only update patient-name if changed
+            // NOTE: mode, createdOn, and createdBy are intentionally NOT updated
+            // This preserves manual appointments (mode="manual") when cron updates them
             await PatientAppointment.updateOne(
               {
                 "patient-id": data["patient-id"],
@@ -261,6 +263,7 @@ const syncOfficeAppointments = async (office, startDate, endDate) => {
                 $set: {
                   "patient-name": data["patient-name"],
                   "updated-on": getCSTDateTime(),
+                  updatedBy: "cron",
                 },
               },
             );

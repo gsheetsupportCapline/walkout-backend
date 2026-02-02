@@ -15,15 +15,15 @@ const patientAppointmentSchema = new mongoose.Schema({
   },
   "chair-name": {
     type: String,
-    required: true,
+    required: false,
   },
   "insurance-name": {
     type: String,
-    required: true,
+    required: false,
   },
   "insurance-type": {
     type: String,
-    required: true,
+    required: false,
   },
   "office-name": {
     type: String,
@@ -32,6 +32,26 @@ const patientAppointmentSchema = new mongoose.Schema({
   "updated-on": {
     type: Date,
     required: true,
+  },
+  mode: {
+    type: String,
+    enum: ["manual", "ES-Query"],
+    default: "ES-Query",
+  },
+  createdOn: {
+    type: Date,
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+  updatedBy: {
+    type: String,
+  },
+  isWalkoutSubmittedToLC3: {
+    type: String,
+    enum: ["Yes", "No"],
+    default: "No",
   },
 });
 
@@ -42,11 +62,11 @@ patientAppointmentSchema.index(
     "office-name": 1,
     dos: 1,
   },
-  { unique: true }
+  { unique: true },
 );
 
 module.exports = mongoose.model(
   "PatientAppointment",
   patientAppointmentSchema,
-  "pt-appt"
+  "pt-appt",
 );
