@@ -556,13 +556,21 @@ exports.submitOfficeSection = async (req, res) => {
     // Otherwise set to "No"
     let isWalkoutSubmittedToLC3 = "No";
     console.log("🔍 Checking isWalkoutSubmittedToLC3 conditions:");
-    console.log(`   patientCame: ${officeData.patientCame} (type: ${typeof officeData.patientCame})`);
-    console.log(`   postOpZeroProduction: ${officeData.postOpZeroProduction} (type: ${typeof officeData.postOpZeroProduction})`);
+    console.log(
+      `   patientCame: ${officeData.patientCame} (type: ${typeof officeData.patientCame})`,
+    );
+    console.log(
+      `   postOpZeroProduction: ${officeData.postOpZeroProduction} (type: ${typeof officeData.postOpZeroProduction})`,
+    );
     if (officeData.patientCame === 1 && officeData.postOpZeroProduction === 2) {
       isWalkoutSubmittedToLC3 = "Yes";
-      console.log("✅ Conditions matched! Setting isWalkoutSubmittedToLC3 = Yes");
+      console.log(
+        "✅ Conditions matched! Setting isWalkoutSubmittedToLC3 = Yes",
+      );
     } else {
-      console.log("❌ Conditions not matched. Setting isWalkoutSubmittedToLC3 = No");
+      console.log(
+        "❌ Conditions not matched. Setting isWalkoutSubmittedToLC3 = No",
+      );
     }
 
     // Validate formRefId if provided
@@ -671,7 +679,9 @@ exports.submitOfficeSection = async (req, res) => {
     // ====================================
     if (formRefId) {
       try {
-        console.log(`📝 Updating appointment ${formRefId} with isWalkoutSubmittedToLC3: ${isWalkoutSubmittedToLC3}`);
+        console.log(
+          `📝 Updating appointment ${formRefId} with isWalkoutSubmittedToLC3: ${isWalkoutSubmittedToLC3}`,
+        );
         await PatientAppointment.findByIdAndUpdate(formRefId, {
           isWalkoutSubmittedToLC3: isWalkoutSubmittedToLC3,
         });
@@ -1109,16 +1119,24 @@ exports.updateOfficeSection = async (req, res) => {
     // Recalculate based on current values of patientCame and postOpZeroProduction
     let isWalkoutSubmittedToLC3 = "No";
     console.log("🔍 UPDATE - Checking isWalkoutSubmittedToLC3 conditions:");
-    console.log(`   patientCame: ${walkout.officeSection.patientCame} (type: ${typeof walkout.officeSection.patientCame})`);
-    console.log(`   postOpZeroProduction: ${walkout.officeSection.postOpZeroProduction} (type: ${typeof walkout.officeSection.postOpZeroProduction})`);
+    console.log(
+      `   patientCame: ${walkout.officeSection.patientCame} (type: ${typeof walkout.officeSection.patientCame})`,
+    );
+    console.log(
+      `   postOpZeroProduction: ${walkout.officeSection.postOpZeroProduction} (type: ${typeof walkout.officeSection.postOpZeroProduction})`,
+    );
     if (
       walkout.officeSection.patientCame === 1 &&
       walkout.officeSection.postOpZeroProduction === 2
     ) {
       isWalkoutSubmittedToLC3 = "Yes";
-      console.log("✅ UPDATE - Conditions matched! Setting isWalkoutSubmittedToLC3 = Yes");
+      console.log(
+        "✅ UPDATE - Conditions matched! Setting isWalkoutSubmittedToLC3 = Yes",
+      );
     } else {
-      console.log("❌ UPDATE - Conditions not matched. Setting isWalkoutSubmittedToLC3 = No");
+      console.log(
+        "❌ UPDATE - Conditions not matched. Setting isWalkoutSubmittedToLC3 = No",
+      );
     }
 
     // ====================================
@@ -1126,7 +1144,9 @@ exports.updateOfficeSection = async (req, res) => {
     // ====================================
     if (walkout.formRefId) {
       try {
-        console.log(`📝 UPDATE - Updating appointment ${walkout.formRefId} with isWalkoutSubmittedToLC3: ${isWalkoutSubmittedToLC3}`);
+        console.log(
+          `📝 UPDATE - Updating appointment ${walkout.formRefId} with isWalkoutSubmittedToLC3: ${isWalkoutSubmittedToLC3}`,
+        );
         await PatientAppointment.findByIdAndUpdate(walkout.formRefId, {
           isWalkoutSubmittedToLC3: isWalkoutSubmittedToLC3,
         });
@@ -1140,7 +1160,9 @@ exports.updateOfficeSection = async (req, res) => {
         );
       }
     } else {
-      console.log("⚠️ UPDATE - No formRefId in walkout, skipping appointment update");
+      console.log(
+        "⚠️ UPDATE - No formRefId in walkout, skipping appointment update",
+      );
     }
 
     // Update root level fields if provided
