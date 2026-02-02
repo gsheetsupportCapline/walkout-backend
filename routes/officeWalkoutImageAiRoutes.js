@@ -5,6 +5,12 @@ const Walkout = require("../models/Walkout");
 const {
   extractOfficeWalkoutData,
 } = require("../controllers/officeWalkoutImageAiController");
+const {
+  createExtractionLog,
+  markAsProcessing,
+  markAsCompleted,
+  markAsFailed,
+} = require("../utils/imageExtractionLogger");
 
 /**
  * @desc    Re-extract data from office walkout image using AI
@@ -16,6 +22,8 @@ router.post(
   protect,
   restrictTo("admin", "superAdmin"),
   async (req, res) => {
+    let logId = null;
+
     try {
       const { id } = req.params;
 
@@ -125,6 +133,29 @@ router.post(
         `📊 Current counts - Total: ${regenDetails.totalRegenerateCount}, Hourly: ${regenDetails.hourlyRegenerateCount}`,
       );
 
+      // ====================================
+      // CREATE EXTRACTION LOG (Manual/Regenerate)
+      // ====================================
+      const log = await createExtractionLog({
+        formRefId: walkout.formRefId,
+        patientId: walkout.appointmentInfo.patientId,
+        dateOfService: walkout.appointmentInfo.dateOfService,
+        officeName: walkout.appointmentInfo.officeName,
+        imageId: walkout.officeWalkoutSnip.imageId,
+        fileName: walkout.officeWalkoutSnip.fileName,
+        imageUploadedAt: walkout.officeWalkoutSnip.uploadedAt,
+        extractorType: "office",
+        extractionMode: "manual", // Regenerate is always manual
+        triggeredBy: req.user._id,
+        isRegeneration: true,
+      });
+
+      logId = log._id;
+      console.log(`📝 Extraction log created: ${logId}`);
+
+      // Mark as processing
+      await markAsProcessing(logId);
+
       // Extract data using AI
       const extractedJson = await extractOfficeWalkoutData(imageKey);
 
@@ -137,6 +168,9 @@ router.post(
       // Save to database immediately
       await walkout.save();
 
+      // Mark extraction as completed
+      await markAsCompleted(logId, JSON.stringify(extractedJson));
+
       console.log(
         `✅ Successfully re-extracted ${extractedJson.data?.length || 0} rows`,
       );
@@ -147,6 +181,7 @@ router.post(
       res.status(200).json({
         success: true,
         message: "Data extracted successfully",
+        logId: logId, // Return log ID
         data: {
           rowsExtracted: extractedJson.data?.length || 0,
           extractedData: extractedJson,
@@ -159,6 +194,12 @@ router.post(
       });
     } catch (error) {
       console.error("❌ Error re-extracting data:", error);
+
+      // Mark extraction as failed if log was created
+      if (logId) {
+        await markAsFailed(logId, error);
+      }
+
       res.status(500).json({
         success: false,
         message: "Failed to extract data from image",

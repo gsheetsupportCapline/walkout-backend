@@ -46,13 +46,14 @@ app.use(
   require("./routes/officeWalkoutImageAiRoutes"),
 );
 app.use("/api/lc3-walkout-ai", require("./routes/lc3WalkoutImageAiRoutes"));
+app.use("/api/extraction-logs", require("./routes/imageExtractionLogRoutes"));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: "Something went wrong!" });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5010;
 
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
