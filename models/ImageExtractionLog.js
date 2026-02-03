@@ -1,37 +1,12 @@
 const mongoose = require("mongoose");
 
 /**
- * Image Extraction Log Schema
- * Tracks all AI-based walkout image extraction processes
- * for both Office and LC3 sections
+ * Individual Extraction Attempt Schema
+ * Nested schema for each extraction attempt
  */
-const imageExtractionLogSchema = new mongoose.Schema(
+const extractionAttemptSchema = new mongoose.Schema(
   {
-    // Appointment Reference
-    formRefId: {
-      type: String,
-      required: true,
-      trim: true,
-      index: true, // For quick lookup with walkout collection
-    },
-
-    // Appointment Details
-    patientId: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    dateOfService: {
-      type: Date,
-      required: true,
-    },
-    officeName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    // Image Details
+    // Image Details for this attempt
     imageId: {
       type: String,
       trim: true,
@@ -42,13 +17,6 @@ const imageExtractionLogSchema = new mongoose.Schema(
     },
     imageUploadedAt: {
       type: Date,
-    },
-
-    // Extraction Process Details
-    extractorType: {
-      type: String,
-      enum: ["office", "lc3"],
-      required: true,
     },
 
     // Extraction Mode
@@ -102,20 +70,59 @@ const imageExtractionLogSchema = new mongoose.Schema(
       ref: "User",
     },
 
-    // AI Prompt Details (for debugging)
-    promptUsed: {
-      type: String,
-      trim: true,
-    },
-
     // Metadata
-    retryCount: {
-      type: Number,
-      default: 0,
-    },
     isRegeneration: {
       type: Boolean,
       default: false,
+    },
+  },
+  {
+    timestamps: true,
+    _id: true, // Keep _id for each attempt
+  },
+);
+
+/**
+ * Image Extraction Log Schema
+ * ONE document per formRefId with separate arrays for office and LC3 extractions
+ */
+const imageExtractionLogSchema = new mongoose.Schema(
+  {
+    // Appointment Reference (UNIQUE - one document per formRefId)
+    formRefId: {
+      type: String,
+      required: true,
+      trim: true,
+      unique: true, // ONE document per formRefId
+      index: true,
+    },
+
+    // Appointment Details
+    appointmentInfo: {
+      patientId: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      dateOfService: {
+        type: Date,
+        required: true,
+      },
+      officeName: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+    },
+
+    // Office Section Extractions (array of attempts)
+    officeSection: {
+      extractions: [extractionAttemptSchema],
+    },
+
+    // LC3 Section Extractions (array of attempts)
+    lc3Section: {
+      extractions: [extractionAttemptSchema],
     },
   },
   {
@@ -124,36 +131,11 @@ const imageExtractionLogSchema = new mongoose.Schema(
   },
 );
 
-// Compound indexes for efficient querying
-imageExtractionLogSchema.index({ formRefId: 1, extractorType: 1 });
-imageExtractionLogSchema.index({ status: 1, createdAt: -1 });
-imageExtractionLogSchema.index({ patientId: 1, dateOfService: -1 });
-imageExtractionLogSchema.index({ officeName: 1, createdAt: -1 });
-imageExtractionLogSchema.index({ extractionMode: 1, createdAt: -1 });
-
-// Method to mark extraction as started
-imageExtractionLogSchema.methods.markAsProcessing = function () {
-  this.status = "processing";
-  return this.save();
-};
-
-// Method to mark extraction as completed
-imageExtractionLogSchema.methods.markAsCompleted = function (extractedData) {
-  this.status = "success";
-  this.extractedData = extractedData;
-  this.requestCompletedAt = new Date();
-  this.processDuration = this.requestCompletedAt - this.requestStartedAt;
-  return this.save();
-};
-
-// Method to mark extraction as failed
-imageExtractionLogSchema.methods.markAsFailed = function (error) {
-  this.status = "failed";
-  this.errorMessage = error.message;
-  this.errorStack = error.stack;
-  this.requestCompletedAt = new Date();
-  this.processDuration = this.requestCompletedAt - this.requestStartedAt;
-  return this.save();
-};
+// Indexes for efficient querying
+imageExtractionLogSchema.index({ formRefId: 1 });
+imageExtractionLogSchema.index({ "appointmentInfo.patientId": 1 });
+imageExtractionLogSchema.index({ "appointmentInfo.dateOfService": -1 });
+imageExtractionLogSchema.index({ "appointmentInfo.officeName": 1 });
+imageExtractionLogSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("ImageExtractionLog", imageExtractionLogSchema);

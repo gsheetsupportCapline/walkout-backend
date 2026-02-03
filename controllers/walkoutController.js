@@ -66,6 +66,7 @@ exports.submitOfficeSection = async (req, res) => {
       openTime,
       walkoutStatus, // Root level - from frontend (can update status)
       isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
+      onHoldReasonsAddressed, // Root level - from frontend (optional text)
       pendingWith, // Root level - from frontend
     } = req.body;
 
@@ -671,6 +672,7 @@ exports.submitOfficeSection = async (req, res) => {
       officeSection: officeData,
       walkoutStatus: walkoutStatus || walkoutStatusDefault, // Use frontend value or calculated default
       isOnHoldAddressed: isOnHoldAddressed || undefined, // Root level - from frontend
+      onHoldReasonsAddressed: onHoldReasonsAddressed || undefined, // Root level - from frontend
       pendingWith: pendingWith || undefined, // Root level - from frontend
     });
 
@@ -730,7 +732,14 @@ exports.submitOfficeSection = async (req, res) => {
             `🤖 Extracting data from office walkout image (${s3Key})...`,
           );
 
-          const extractedJson = await extractOfficeWalkoutData(s3Key);
+          const extractedJson = await extractOfficeWalkoutData(s3Key, {
+            formRefId: walkout.formRefId,
+            appointmentInfo: walkout.appointmentInfo,
+            fileName: officeWalkoutSnipData.fileName,
+            uploadedAt: officeWalkoutSnipData.uploadedAt,
+            mode: "automatic",
+            triggeredBy: null, // Background process
+          });
           const aiExtractedData = JSON.stringify(extractedJson);
 
           // Update the walkout document with extracted data
@@ -917,6 +926,7 @@ exports.updateOfficeSection = async (req, res) => {
       extractedData: req.body.extractedData,
       walkoutStatus: req.body.walkoutStatus, // Root level
       isOnHoldAddressed: req.body.isOnHoldAddressed, // Root level
+      onHoldReasonsAddressed: req.body.onHoldReasonsAddressed, // Root level
       pendingWith: req.body.pendingWith, // Root level
     };
 
@@ -957,6 +967,7 @@ exports.updateOfficeSection = async (req, res) => {
       newOfficeNote,
       walkoutStatus, // Root level
       isOnHoldAddressed, // Root level
+      onHoldReasonsAddressed, // Root level
       pendingWith, // Root level
     } = convertedBody;
 
@@ -1172,6 +1183,9 @@ exports.updateOfficeSection = async (req, res) => {
     if (isOnHoldAddressed !== undefined) {
       walkout.isOnHoldAddressed = isOnHoldAddressed;
     }
+    if (onHoldReasonsAddressed !== undefined) {
+      walkout.onHoldReasonsAddressed = onHoldReasonsAddressed;
+    }
     if (pendingWith !== undefined) {
       walkout.pendingWith = pendingWith;
     }
@@ -1200,7 +1214,14 @@ exports.updateOfficeSection = async (req, res) => {
             `🤖 Extracting data from new office walkout image (${newImageS3Key})...`,
           );
 
-          const extractedJson = await extractOfficeWalkoutData(newImageS3Key);
+          const extractedJson = await extractOfficeWalkoutData(newImageS3Key, {
+            formRefId: walkout.formRefId,
+            appointmentInfo: walkout.appointmentInfo,
+            fileName: walkout.officeWalkoutSnip.fileName,
+            uploadedAt: walkout.officeWalkoutSnip.uploadedAt,
+            mode: "automatic",
+            triggeredBy: null, // Background process
+          });
           const aiExtractedData = JSON.stringify(extractedJson);
 
           // Update the walkout document with extracted data
@@ -1290,6 +1311,7 @@ exports.submitLc3Section = async (req, res) => {
       onHoldNote,
       walkoutStatus, // Root level - from frontend (can update status)
       isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
+      onHoldReasonsAddressed, // Root level - from frontend (optional text)
       pendingWith, // Root level - from frontend
       isCompleted, // NEW: Flag to indicate if LC3 is being marked as completed
       sessionStartDateTime, // NEW: Session tracking - start time from frontend
@@ -1532,6 +1554,9 @@ exports.submitLc3Section = async (req, res) => {
     if (isOnHoldAddressed !== undefined) {
       walkout.isOnHoldAddressed = isOnHoldAddressed;
     }
+    if (onHoldReasonsAddressed !== undefined) {
+      walkout.onHoldReasonsAddressed = onHoldReasonsAddressed;
+    }
     if (pendingWith !== undefined) {
       walkout.pendingWith = pendingWith;
     }
@@ -1558,7 +1583,14 @@ exports.submitLc3Section = async (req, res) => {
             `🤖 Extracting data from LC3 walkout image (${lc3ImageS3Key})...`,
           );
 
-          const extractedJson = await extractLc3WalkoutData(lc3ImageS3Key);
+          const extractedJson = await extractLc3WalkoutData(lc3ImageS3Key, {
+            formRefId: walkout.formRefId,
+            appointmentInfo: walkout.appointmentInfo,
+            fileName: walkout.lc3WalkoutImage.fileName,
+            uploadedAt: walkout.lc3WalkoutImage.uploadedAt,
+            mode: "automatic",
+            triggeredBy: null, // Background process
+          });
           const aiExtractedData = JSON.stringify(extractedJson);
 
           // Update the walkout document with extracted data

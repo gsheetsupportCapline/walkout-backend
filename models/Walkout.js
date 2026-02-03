@@ -811,6 +811,12 @@ const walkoutSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // On-hold reasons addressed (optional text field)
+    onHoldReasonsAddressed: {
+      type: String,
+      trim: true,
+    },
+
     // Pending with (updated from frontend when office or LC3 section updates)
     pendingWith: {
       type: String,

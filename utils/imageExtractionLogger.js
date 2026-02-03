@@ -1,68 +1,114 @@
 const ImageExtractionLog = require("../models/ImageExtractionLog");
 
 /**
- * Create a new image extraction log entry
+ * Add extraction log entry for a specific section (office or lc3)
+ * Creates document if doesn't exist, appends to existing if it does
  * @param {Object} data - Log data
- * @returns {Promise<Object>} Created log entry
+ * @returns {Promise<Object>} Created/updated log entry with attemptId
  */
-exports.createExtractionLog = async (data) => {
+exports.addExtractionLog = async (data) => {
   try {
     const {
       formRefId,
-      patientId,
-      dateOfService,
-      officeName,
+      appointmentInfo, // { patientId, dateOfService, officeName }
+      sectionType, // 'office' or 'lc3'
       imageId,
       fileName,
       imageUploadedAt,
-      extractorType,
-      extractionMode = "automatic", // automatic or manual
+      extractionMode = "automatic",
       triggeredBy,
-      promptUsed,
       isRegeneration = false,
     } = data;
 
-    const log = await ImageExtractionLog.create({
-      formRefId,
-      patientId,
-      dateOfService,
-      officeName,
+    if (!sectionType || !["office", "lc3"].includes(sectionType)) {
+      throw new Error("sectionType must be 'office' or 'lc3'");
+    }
+
+    // Create new extraction attempt object
+    const newAttempt = {
       imageId,
       fileName,
       imageUploadedAt,
-      extractorType,
       extractionMode,
       triggeredBy,
-      promptUsed,
       isRegeneration,
       status: "pending",
       requestStartedAt: new Date(),
-    });
+    };
+
+    const sectionField =
+      sectionType === "office" ? "officeSection" : "lc3Section";
+
+    // Find existing log or create new one
+    let log = await ImageExtractionLog.findOneAndUpdate(
+      { formRefId },
+      {
+        $setOnInsert: {
+          formRefId,
+          appointmentInfo,
+        },
+        $push: {
+          [`${sectionField}.extractions`]: newAttempt,
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    // Get the ID of the newly added attempt (last item in array)
+    const attempts = log[sectionField].extractions;
+    const attemptId = attempts[attempts.length - 1]._id;
 
     console.log(
-      `📝 Image extraction log created: ${log._id} (${extractorType} - ${extractionMode})`,
+      `📝 Extraction log added: formRefId=${formRefId}, section=${sectionType}, attemptId=${attemptId}, mode=${extractionMode}`,
     );
-    return log;
+
+    return {
+      logId: log._id,
+      attemptId: attemptId,
+      sectionType,
+    };
   } catch (error) {
-    console.error("Error creating extraction log:", error);
+    console.error("Error adding extraction log:", error);
     throw error;
   }
 };
 
 /**
- * Mark extraction as processing
- * @param {String} logId - Log entry ID
+ * Mark specific extraction attempt as processing
+ * @param {String} formRefId - Form Reference ID
+ * @param {String} sectionType - 'office' or 'lc3'
+ * @param {String} attemptId - Attempt ID
  * @returns {Promise<Object>} Updated log entry
  */
-exports.markAsProcessing = async (logId) => {
+exports.markAsProcessing = async (formRefId, sectionType, attemptId) => {
   try {
-    const log = await ImageExtractionLog.findById(logId);
+    const sectionField =
+      sectionType === "office" ? "officeSection" : "lc3Section";
+
+    const log = await ImageExtractionLog.findOneAndUpdate(
+      {
+        formRefId,
+        [`${sectionField}.extractions._id`]: attemptId,
+      },
+      {
+        $set: {
+          [`${sectionField}.extractions.$.status`]: "processing",
+        },
+      },
+      { new: true },
+    );
+
     if (!log) {
-      throw new Error("Extraction log not found");
+      throw new Error("Extraction log or attempt not found");
     }
 
-    await log.markAsProcessing();
-    console.log(`⏳ Extraction marked as processing: ${logId}`);
+    console.log(
+      `⏳ Extraction marked as processing: formRefId=${formRefId}, section=${sectionType}, attemptId=${attemptId}`,
+    );
     return log;
   } catch (error) {
     console.error("Error marking as processing:", error);
@@ -71,23 +117,58 @@ exports.markAsProcessing = async (logId) => {
 };
 
 /**
- * Mark extraction as completed
- * @param {String} logId - Log entry ID
- * @param {String} extractedData - Extracted data
+ * Mark specific extraction attempt as completed
+ * @param {String} formRefId - Form Reference ID
+ * @param {String} sectionType - 'office' or 'lc3'
+ * @param {String} attemptId - Attempt ID
+ * @param {String} extractedData - Extracted data JSON string
  * @returns {Promise<Object>} Updated log entry
  */
-exports.markAsCompleted = async (logId, extractedData) => {
+exports.markAsCompleted = async (
+  formRefId,
+  sectionType,
+  attemptId,
+  extractedData,
+) => {
   try {
-    const log = await ImageExtractionLog.findById(logId);
+    const sectionField =
+      sectionType === "office" ? "officeSection" : "lc3Section";
+
+    // First, get the attempt to calculate duration
+    const log = await ImageExtractionLog.findOne({
+      formRefId,
+      [`${sectionField}.extractions._id`]: attemptId,
+    });
+
     if (!log) {
-      throw new Error("Extraction log not found");
+      throw new Error("Extraction log or attempt not found");
     }
 
-    await log.markAsCompleted(extractedData);
-    console.log(
-      `✅ Extraction completed: ${logId} (Duration: ${log.processDuration}ms)`,
+    const attempt = log[sectionField].extractions.id(attemptId);
+    const completedAt = new Date();
+    const duration = completedAt - attempt.requestStartedAt;
+
+    // Update the attempt
+    const updatedLog = await ImageExtractionLog.findOneAndUpdate(
+      {
+        formRefId,
+        [`${sectionField}.extractions._id`]: attemptId,
+      },
+      {
+        $set: {
+          [`${sectionField}.extractions.$.status`]: "success",
+          [`${sectionField}.extractions.$.extractedData`]: extractedData,
+          [`${sectionField}.extractions.$.requestCompletedAt`]: completedAt,
+          [`${sectionField}.extractions.$.processDuration`]: duration,
+        },
+      },
+      { new: true },
     );
-    return log;
+
+    console.log(
+      `✅ Extraction completed: formRefId=${formRefId}, section=${sectionType}, attemptId=${attemptId} (Duration: ${duration}ms)`,
+    );
+    return updatedLog;
   } catch (error) {
     console.error("Error marking as completed:", error);
     throw error;
@@ -95,21 +176,54 @@ exports.markAsCompleted = async (logId, extractedData) => {
 };
 
 /**
- * Mark extraction as failed
- * @param {String} logId - Log entry ID
+ * Mark specific extraction attempt as failed
+ * @param {String} formRefId - Form Reference ID
+ * @param {String} sectionType - 'office' or 'lc3'
+ * @param {String} attemptId - Attempt ID
  * @param {Error} error - Error object
  * @returns {Promise<Object>} Updated log entry
  */
-exports.markAsFailed = async (logId, error) => {
+exports.markAsFailed = async (formRefId, sectionType, attemptId, error) => {
   try {
-    const log = await ImageExtractionLog.findById(logId);
+    const sectionField =
+      sectionType === "office" ? "officeSection" : "lc3Section";
+
+    // First, get the attempt to calculate duration
+    const log = await ImageExtractionLog.findOne({
+      formRefId,
+      [`${sectionField}.extractions._id`]: attemptId,
+    });
+
     if (!log) {
-      throw new Error("Extraction log not found");
+      throw new Error("Extraction log or attempt not found");
     }
 
-    await log.markAsFailed(error);
-    console.log(`❌ Extraction failed: ${logId}`);
-    return log;
+    const attempt = log[sectionField].extractions.id(attemptId);
+    const completedAt = new Date();
+    const duration = completedAt - attempt.requestStartedAt;
+
+    // Update the attempt
+    const updatedLog = await ImageExtractionLog.findOneAndUpdate(
+      {
+        formRefId,
+        [`${sectionField}.extractions._id`]: attemptId,
+      },
+      {
+        $set: {
+          [`${sectionField}.extractions.$.status`]: "failed",
+          [`${sectionField}.extractions.$.errorMessage`]: error.message,
+          [`${sectionField}.extractions.$.errorStack`]: error.stack,
+          [`${sectionField}.extractions.$.requestCompletedAt`]: completedAt,
+          [`${sectionField}.extractions.$.processDuration`]: duration,
+        },
+      },
+      { new: true },
+    );
+
+    console.log(
+      `❌ Extraction failed: formRefId=${formRefId}, section=${sectionType}, attemptId=${attemptId}`,
+    );
+    return updatedLog;
   } catch (err) {
     console.error("Error marking as failed:", err);
     throw err;
@@ -119,15 +233,16 @@ exports.markAsFailed = async (logId, error) => {
 /**
  * Get extraction logs by formRefId
  * @param {String} formRefId - Form Reference ID
- * @returns {Promise<Array>} Extraction logs
+ * @returns {Promise<Object>} Extraction log with all attempts
  */
 exports.getLogsByFormRefId = async (formRefId) => {
   try {
-    const logs = await ImageExtractionLog.find({ formRefId })
-      .sort({ createdAt: -1 })
-      .populate("triggeredBy", "firstName lastName email");
+    const log = await ImageExtractionLog.findOne({ formRefId }).populate(
+      "officeSection.extractions.triggeredBy lc3Section.extractions.triggeredBy",
+      "name email",
+    );
 
-    return logs;
+    return log;
   } catch (error) {
     console.error("Error fetching logs by formRefId:", error);
     throw error;
@@ -135,67 +250,74 @@ exports.getLogsByFormRefId = async (formRefId) => {
 };
 
 /**
- * Get extraction logs by status
- * @param {String} status - Status (pending, processing, success, failed)
- * @param {Number} limit - Limit results
- * @returns {Promise<Array>} Extraction logs
- */
-exports.getLogsByStatus = async (status, limit = 100) => {
-  try {
-    const logs = await ImageExtractionLog.find({ status })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate("triggeredBy", "firstName lastName email");
-
-    return logs;
-  } catch (error) {
-    console.error("Error fetching logs by status:", error);
-    throw error;
-  }
-};
-
-/**
- * Get extraction statistics
- * @param {String} extractorType - Optional: office or lc3
+ * Get extraction statistics for a section
+ * @param {String} sectionType - 'office' or 'lc3'
  * @returns {Promise<Object>} Statistics
  */
-exports.getExtractionStats = async (extractorType = null) => {
+exports.getExtractionStats = async (sectionType = null) => {
   try {
-    const matchStage = extractorType ? { extractorType } : {};
+    const sectionField =
+      sectionType === "office"
+        ? "officeSection"
+        : sectionType === "lc3"
+          ? "lc3Section"
+          : null;
 
-    const stats = await ImageExtractionLog.aggregate([
-      { $match: matchStage },
-      {
-        $group: {
-          _id: "$status",
-          count: { $sum: 1 },
-          avgDuration: { $avg: "$processDuration" },
+    if (!sectionField) {
+      // Get stats for both sections
+      const logs = await ImageExtractionLog.find({});
+
+      let totalOffice = 0,
+        successOffice = 0,
+        failedOffice = 0;
+      let totalLc3 = 0,
+        successLc3 = 0,
+        failedLc3 = 0;
+
+      logs.forEach((log) => {
+        if (log.officeSection && log.officeSection.extractions) {
+          log.officeSection.extractions.forEach((attempt) => {
+            totalOffice++;
+            if (attempt.status === "success") successOffice++;
+            if (attempt.status === "failed") failedOffice++;
+          });
+        }
+        if (log.lc3Section && log.lc3Section.extractions) {
+          log.lc3Section.extractions.forEach((attempt) => {
+            totalLc3++;
+            if (attempt.status === "success") successLc3++;
+            if (attempt.status === "failed") failedLc3++;
+          });
+        }
+      });
+
+      return {
+        office: {
+          total: totalOffice,
+          success: successOffice,
+          failed: failedOffice,
         },
-      },
-    ]);
+        lc3: { total: totalLc3, success: successLc3, failed: failedLc3 },
+      };
+    }
 
-    const result = {
-      total: 0,
-      pending: 0,
-      processing: 0,
-      success: 0,
-      failed: 0,
-      avgDurationSuccess: 0,
-      avgDurationFailed: 0,
-    };
+    // Get stats for specific section
+    const logs = await ImageExtractionLog.find({});
+    let total = 0,
+      success = 0,
+      failed = 0;
 
-    stats.forEach((stat) => {
-      result.total += stat.count;
-      result[stat._id] = stat.count;
-
-      if (stat._id === "success") {
-        result.avgDurationSuccess = Math.round(stat.avgDuration || 0);
-      } else if (stat._id === "failed") {
-        result.avgDurationFailed = Math.round(stat.avgDuration || 0);
+    logs.forEach((log) => {
+      if (log[sectionField] && log[sectionField].extractions) {
+        log[sectionField].extractions.forEach((attempt) => {
+          total++;
+          if (attempt.status === "success") success++;
+          if (attempt.status === "failed") failed++;
+        });
       }
     });
 
-    return result;
+    return { total, success, failed };
   } catch (error) {
     console.error("Error fetching extraction stats:", error);
     throw error;

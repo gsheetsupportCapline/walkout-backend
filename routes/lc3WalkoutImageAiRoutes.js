@@ -5,12 +5,6 @@ const Walkout = require("../models/Walkout");
 const {
   extractLc3WalkoutData,
 } = require("../controllers/lc3WalkoutImageAiController");
-const {
-  createExtractionLog,
-  markAsProcessing,
-  markAsCompleted,
-  markAsFailed,
-} = require("../utils/imageExtractionLogger");
 
 /**
  * @desc    Re-extract data from LC3 walkout image using AI
@@ -22,8 +16,6 @@ router.post(
   protect,
   restrictTo("admin", "superAdmin"),
   async (req, res) => {
-    let logId = null;
-
     try {
       const { id } = req.params;
 
@@ -133,31 +125,15 @@ router.post(
         `📊 Current counts - Total: ${regenDetails.totalRegenerateCount}, Hourly: ${regenDetails.hourlyRegenerateCount}`,
       );
 
-      // ====================================
-      // CREATE EXTRACTION LOG (Manual/Regenerate)
-      // ====================================
-      const log = await createExtractionLog({
+      // Extract data using AI (logging handled inside extraction function)
+      const extractedJson = await extractLc3WalkoutData(imageKey, {
         formRefId: walkout.formRefId,
-        patientId: walkout.appointmentInfo.patientId,
-        dateOfService: walkout.appointmentInfo.dateOfService,
-        officeName: walkout.appointmentInfo.officeName,
-        imageId: walkout.lc3WalkoutImage.imageId,
+        appointmentInfo: walkout.appointmentInfo,
         fileName: walkout.lc3WalkoutImage.fileName,
-        imageUploadedAt: walkout.lc3WalkoutImage.uploadedAt,
-        extractorType: "lc3",
-        extractionMode: "manual", // Regenerate is always manual
+        uploadedAt: walkout.lc3WalkoutImage.uploadedAt,
+        mode: "manual",
         triggeredBy: req.user._id,
-        isRegeneration: true,
       });
-
-      logId = log._id;
-      console.log(`📝 Extraction log created: ${logId}`);
-
-      // Mark as processing
-      await markAsProcessing(logId);
-
-      // Extract data using AI
-      const extractedJson = await extractLc3WalkoutData(imageKey);
 
       // Update walkout with extracted data and increment counters
       walkout.lc3WalkoutImage.extractedData = JSON.stringify(extractedJson);
@@ -167,9 +143,6 @@ router.post(
 
       // Save to database immediately
       await walkout.save();
-
-      // Mark extraction as completed
-      await markAsCompleted(logId, JSON.stringify(extractedJson));
 
       console.log(
         `✅ Successfully re-extracted ${extractedJson.data?.length || 0} rows from LC3 image`,
@@ -181,7 +154,6 @@ router.post(
       res.status(200).json({
         success: true,
         message: "Data extracted successfully from LC3 image",
-        logId: logId, // Return log ID
         data: {
           rowsExtracted: extractedJson.data?.length || 0,
           extractedData: extractedJson,
@@ -194,11 +166,6 @@ router.post(
       });
     } catch (error) {
       console.error("❌ Error re-extracting LC3 data:", error);
-
-      // Mark extraction as failed if log was created
-      if (logId) {
-        await markAsFailed(logId, error);
-      }
 
       res.status(500).json({
         success: false,

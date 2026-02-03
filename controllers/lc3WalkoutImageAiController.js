@@ -1,13 +1,56 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { getPresignedUrl } = require("../utils/s3Upload");
 const fetch = require("node-fetch");
+const {
+  addExtractionLog,
+  markAsProcessing,
+  markAsCompleted,
+  markAsFailed,
+} = require("../utils/imageExtractionLogger");
 
 /**
  * @desc    Extract data from LC3 walkout image using Gemini AI
  * @param   {string} imageKey - S3 key of the image
+ * @param   {Object} options - Additional options { formRefId, appointmentInfo, fileName, uploadedAt, mode, triggeredBy }
  * @returns {Promise<Object>} Extracted data as JSON object
  */
-exports.extractLc3WalkoutData = async (imageKey) => {
+exports.extractLc3WalkoutData = async (imageKey, options = {}) => {
+  const {
+    formRefId,
+    appointmentInfo = {},
+    fileName,
+    uploadedAt,
+    mode = "automatic",
+    triggeredBy,
+  } = options;
+
+  let logInfo = null;
+
+  // Add extraction log if formRefId is provided
+  if (formRefId) {
+    try {
+      logInfo = await addExtractionLog({
+        formRefId: formRefId,
+        appointmentInfo: appointmentInfo,
+        sectionType: "lc3",
+        imageId: imageKey,
+        fileName: fileName,
+        imageUploadedAt: uploadedAt,
+        extractionMode: mode,
+        triggeredBy: triggeredBy,
+        isRegeneration: mode === "regenerated" || mode === "manual",
+      });
+      console.log(
+        `📝 Added extraction log: formRefId=${formRefId}, attemptId=${logInfo.attemptId}`,
+      );
+
+      // Mark as processing
+      await markAsProcessing(formRefId, "lc3", logInfo.attemptId);
+    } catch (logError) {
+      console.error("⚠️ Failed to create extraction log:", logError.message);
+      // Continue with extraction even if logging fails
+    }
+  }
   try {
     console.log("🤖 Starting AI extraction for LC3 walkout image...");
     console.log(`📸 Image Key: ${imageKey}`);
@@ -115,9 +158,39 @@ If any of the following keywords appear anywhere within the Description area and
       `✅ Successfully extracted ${extractedData.data?.length || 0} rows from LC3 image`,
     );
 
+    // Update extraction log as successful
+    if (logInfo) {
+      try {
+        await markAsCompleted(
+          formRefId,
+          "lc3",
+          logInfo.attemptId,
+          JSON.stringify(extractedData),
+        );
+        console.log(
+          `📝 Updated extraction log as successful: attemptId=${logInfo.attemptId}`,
+        );
+      } catch (logError) {
+        console.error("⚠️ Failed to update extraction log:", logError.message);
+      }
+    }
+
     return extractedData;
   } catch (error) {
     console.error("❌ Error extracting data from LC3 walkout image:", error);
+
+    // Update extraction log as failed
+    if (logInfo) {
+      try {
+        await markAsFailed(formRefId, "lc3", logInfo.attemptId, error);
+        console.log(
+          `📝 Updated extraction log as failed: attemptId=${logInfo.attemptId}`,
+        );
+      } catch (logError) {
+        console.error("⚠️ Failed to update extraction log:", logError.message);
+      }
+    }
+
     throw new Error(`Failed to extract data from LC3 image: ${error.message}`);
   }
 };
