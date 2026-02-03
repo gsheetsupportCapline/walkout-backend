@@ -88,10 +88,11 @@ const login = async (req, res) => {
     const token = generateToken(user._id);
 
     // Set cookie with proper cross-origin settings
+    // Note: secure cookies don't work with HTTP backends, so using false for HTTP
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: false, // Set to false for HTTP backend (change to true when using HTTPS)
+      sameSite: "lax", // Changed to lax for HTTP compatibility
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
