@@ -80,7 +80,7 @@ const fetchAppointmentData = async (officeName, startDate, endDate) => {
 
     const response = await axios.get(apiUrl, {
       params: params,
-      timeout: 20000, // 20 seconds timeout
+      timeout: 40000, // 40 seconds timeout
     });
 
     // API returns: { message: "", data: [{c1, c2, c3, c4, c5, c6}], status: "OK" }
@@ -95,7 +95,7 @@ const fetchAppointmentData = async (officeName, startDate, endDate) => {
   } catch (error) {
     if (error.code === "ECONNABORTED") {
       console.error(
-        `✗ Timeout fetching data for office ${officeName} (exceeded 20 seconds)`,
+        `✗ Timeout fetching data for office ${officeName} (exceeded 40 seconds)`,
       );
     } else {
       console.error(
@@ -190,8 +190,13 @@ const syncOfficeAppointments = async (office, startDate, endDate) => {
     );
 
     // Find appointments to archive (exist in DB but not in API response)
+    // Exclude walk-in appointments from archiving as they are manually created
     const appointmentsToArchive = existingAppointments.filter((existing) => {
       const key = `${existing["patient-id"]}_${existing["office-name"]}_${existing.dos}`;
+      // Don't archive walk-in appointments
+      if (existing.isWalkIn === true) {
+        return false;
+      }
       return !apiDataSet.has(key);
     });
 

@@ -38,6 +38,11 @@ const patientAppointmentSchema = new mongoose.Schema({
     enum: ["manual", "ES-Query"],
     default: "ES-Query",
   },
+  isWalkIn: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
   createdOn: {
     type: Date,
   },

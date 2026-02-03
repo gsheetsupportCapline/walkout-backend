@@ -624,6 +624,7 @@ exports.createWalkInAppointment = async (req, res) => {
       "office-name": officeName,
       "updated-on": new Date(),
       mode: "manual",
+      isWalkIn: true,
       createdOn: new Date(),
       createdBy: req.user._id,
       isWalkoutSubmittedToLC3: "No",

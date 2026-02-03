@@ -87,17 +87,18 @@ const login = async (req, res) => {
 
     const token = generateToken(user._id);
 
-    // Set cookie with proper cross-origin settings
-    // Note: secure cookies don't work with HTTP backends, so using false for HTTP
+    // Optional: Set cookie for local development (won't work cross-domain HTTP/HTTPS)
+    // Token in response body is the primary authentication method
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, // Set to false for HTTP backend (change to true when using HTTPS)
-      sameSite: "lax", // Changed to lax for HTTP compatibility
+      secure: false,
+      sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
     res.status(200).json({
       success: true,
+      message: "Login successful",
       data: {
         _id: user._id,
         name: user.name,

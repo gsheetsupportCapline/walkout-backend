@@ -12,8 +12,7 @@ connectDB();
 
 const app = express();
 
-// CORS configuration - credentials enabled for cross-origin cookie support
-// Support multiple frontend URLs (comma-separated in FRONTEND_URL env variable)
+// CORS configuration - Allow requests from frontend URLs
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(",").map((url) => url.trim())
   : ["http://localhost:3000"];
@@ -33,9 +32,10 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    credentials: true, // Allow cookies to be sent with requests
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true, // Keep enabled for localhost cookie support
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Authorization"], // Allow frontend to read Authorization header
   }),
 );
 
