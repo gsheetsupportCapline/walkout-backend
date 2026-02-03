@@ -7,3 +7,8 @@ coverage/
 dist/
 build/
 scripts/*.js.map
+
+# Documentation and testing files (not needed in production)
+documentation/
+postman/
+*.archive
