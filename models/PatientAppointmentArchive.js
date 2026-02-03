@@ -15,15 +15,18 @@ const patientAppointmentArchiveSchema = new mongoose.Schema({
   },
   "chair-name": {
     type: String,
-    required: true,
+    required: false,
+    default: "",
   },
   "insurance-name": {
     type: String,
-    required: true,
+    required: false,
+    default: "",
   },
   "insurance-type": {
     type: String,
-    required: true,
+    required: false,
+    default: "",
   },
   "office-name": {
     type: String,
@@ -42,5 +45,5 @@ const patientAppointmentArchiveSchema = new mongoose.Schema({
 module.exports = mongoose.model(
   "PatientAppointmentArchive",
   patientAppointmentArchiveSchema,
-  "pt-appt-archive"
+  "pt-appt-archive",
 );
