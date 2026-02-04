@@ -807,13 +807,7 @@ const walkoutSchema = new mongoose.Schema(
     // On-hold addressed status (updated from frontend when office or LC3 section updates)
     isOnHoldAddressed: {
       type: String,
-      enum: ["yes", "no"],
-      trim: true,
-    },
-
-    // On-hold reasons addressed (optional text field)
-    onHoldReasonsAddressed: {
-      type: String,
+      enum: ["Yes", "No"],
       trim: true,
     },
 

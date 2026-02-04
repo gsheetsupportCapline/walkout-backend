@@ -66,7 +66,6 @@ exports.submitOfficeSection = async (req, res) => {
       openTime,
       walkoutStatus, // Root level - from frontend (can update status)
       isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
-      onHoldReasonsAddressed, // Root level - from frontend (optional text)
       pendingWith, // Root level - from frontend
     } = req.body;
 
@@ -672,7 +671,6 @@ exports.submitOfficeSection = async (req, res) => {
       officeSection: officeData,
       walkoutStatus: walkoutStatus || walkoutStatusDefault, // Use frontend value or calculated default
       isOnHoldAddressed: isOnHoldAddressed || undefined, // Root level - from frontend
-      onHoldReasonsAddressed: onHoldReasonsAddressed || undefined, // Root level - from frontend
       pendingWith: pendingWith || undefined, // Root level - from frontend
     });
 
@@ -921,12 +919,10 @@ exports.updateOfficeSection = async (req, res) => {
 
       // String fields - keep as is
       errorFixRemarks: req.body.errorFixRemarks,
-      narrative: req.body.narrative,
       newOfficeNote: req.body.newOfficeNote,
       extractedData: req.body.extractedData,
       walkoutStatus: req.body.walkoutStatus, // Root level
       isOnHoldAddressed: req.body.isOnHoldAddressed, // Root level
-      onHoldReasonsAddressed: req.body.onHoldReasonsAddressed, // Root level
       pendingWith: req.body.pendingWith, // Root level
     };
 
@@ -967,7 +963,6 @@ exports.updateOfficeSection = async (req, res) => {
       newOfficeNote,
       walkoutStatus, // Root level
       isOnHoldAddressed, // Root level
-      onHoldReasonsAddressed, // Root level
       pendingWith, // Root level
     } = convertedBody;
 
@@ -1183,9 +1178,6 @@ exports.updateOfficeSection = async (req, res) => {
     if (isOnHoldAddressed !== undefined) {
       walkout.isOnHoldAddressed = isOnHoldAddressed;
     }
-    if (onHoldReasonsAddressed !== undefined) {
-      walkout.onHoldReasonsAddressed = onHoldReasonsAddressed;
-    }
     if (pendingWith !== undefined) {
       walkout.pendingWith = pendingWith;
     }
@@ -1311,7 +1303,6 @@ exports.submitLc3Section = async (req, res) => {
       onHoldNote,
       walkoutStatus, // Root level - from frontend (can update status)
       isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
-      onHoldReasonsAddressed, // Root level - from frontend (optional text)
       pendingWith, // Root level - from frontend
       isCompleted, // NEW: Flag to indicate if LC3 is being marked as completed
       sessionStartDateTime, // NEW: Session tracking - start time from frontend
@@ -1553,9 +1544,6 @@ exports.submitLc3Section = async (req, res) => {
     }
     if (isOnHoldAddressed !== undefined) {
       walkout.isOnHoldAddressed = isOnHoldAddressed;
-    }
-    if (onHoldReasonsAddressed !== undefined) {
-      walkout.onHoldReasonsAddressed = onHoldReasonsAddressed;
     }
     if (pendingWith !== undefined) {
       walkout.pendingWith = pendingWith;
