@@ -704,14 +704,37 @@ const lc3SectionSchema = new mongoose.Schema(
   { _id: false },
 );
 
-// Audit Section Schema (placeholder for now)
+// Audit Section Schema
 const auditSectionSchema = new mongoose.Schema(
   {
-    // Will be implemented later
-    placeholder: {
-      type: String,
-      default: null,
+    // Analysis Data - JSON object matching office and LC3 image data
+    auditAnalysisData: {
+      type: String, // Stored as JSON string
+      trim: true,
     },
+
+    // Discrepancy Found other than LC3 remarks? (Radio button: 1 or 2)
+    auditDiscrepancyFoundOtherThanLC3Remarks: {
+      type: Number, // 1 = Yes, 2 = No
+    },
+
+    // Discrepancy Remarks (Text field)
+    auditDiscrepancyRemarks: {
+      type: String,
+      trim: true,
+    },
+
+    // Discrepancy Fixed by LC3? (Radio button: 1 or 2)
+    auditDiscrepancyFixedByLC3: {
+      type: Number, // 1 = Yes, 2 = No
+    },
+
+    // LC3 Remarks (Text field)
+    auditLc3Remarks: {
+      type: String,
+      trim: true,
+    },
+
     // Metadata
     auditLastUpdatedAt: {
       type: Date,

@@ -8,6 +8,7 @@ const {
   getWalkoutById,
   updateOfficeSection,
   submitLc3Section,
+  submitAuditSection,
   deleteWalkout,
   serveWalkoutImage,
   serveImageByImageId,
@@ -62,6 +63,9 @@ router.put(
   upload.single("lc3WalkoutImage"),
   submitLc3Section,
 );
+
+// Submit/Update Audit section - All authenticated users
+router.put("/:id/audit", protect, submitAuditSection);
 
 // Delete walkout - Admin/SuperAdmin only
 router.delete(

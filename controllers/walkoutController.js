@@ -1616,6 +1616,143 @@ exports.submitLc3Section = async (req, res) => {
   }
 };
 
+// ====================================
+// AUDIT SECTION OPERATIONS
+// ====================================
+
+// Submit/Update Audit Section
+exports.submitAuditSection = async (req, res) => {
+  try {
+    console.log("🔷 Audit Section Submit - Starting...");
+    console.log("📋 Request Params:", req.params);
+    console.log("📋 Request Body Keys:", Object.keys(req.body));
+
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // Find the walkout
+    const walkout = await Walkout.findById(id);
+
+    if (!walkout) {
+      return res.status(404).json({
+        success: false,
+        message: "Walkout not found",
+      });
+    }
+
+    // Validate that LC3 section has been submitted
+    if (!walkout.lc3Section || !walkout.lc3Section.lc3SubmittedAt) {
+      return res.status(400).json({
+        success: false,
+        message: "LC3 section must be submitted before Audit section",
+      });
+    }
+
+    // Initialize auditSection if it doesn't exist
+    if (!walkout.auditSection) {
+      walkout.auditSection = {};
+    }
+
+    // Extract Audit data from request body
+    const {
+      auditAnalysisData,
+      auditDiscrepancyFoundOtherThanLC3Remarks,
+      auditDiscrepancyRemarks,
+      auditDiscrepancyFixedByLC3,
+      auditLc3Remarks,
+    } = req.body;
+
+    // Parse auditAnalysisData if it's a string (from FormData)
+    let parsedAnalysisData = auditAnalysisData;
+    if (auditAnalysisData && typeof auditAnalysisData === "string") {
+      try {
+        // Validate it's valid JSON
+        JSON.parse(auditAnalysisData);
+        parsedAnalysisData = auditAnalysisData;
+      } catch (parseError) {
+        return res.status(400).json({
+          success: false,
+          message: "auditAnalysisData must be a valid JSON string",
+          field: "auditAnalysisData",
+          error: parseError.message,
+        });
+      }
+    } else if (auditAnalysisData && typeof auditAnalysisData === "object") {
+      // If it's already an object, stringify it
+      parsedAnalysisData = JSON.stringify(auditAnalysisData);
+    }
+
+    console.log("📝 Audit Section Data Received:");
+    console.log("  - auditAnalysisData:", parsedAnalysisData ? "✓" : "✗");
+    console.log(
+      "  - auditDiscrepancyFoundOtherThanLC3Remarks:",
+      auditDiscrepancyFoundOtherThanLC3Remarks,
+    );
+    console.log(
+      "  - auditDiscrepancyRemarks:",
+      auditDiscrepancyRemarks ? "✓" : "✗",
+    );
+    console.log("  - auditDiscrepancyFixedByLC3:", auditDiscrepancyFixedByLC3);
+    console.log("  - auditLc3Remarks:", auditLc3Remarks ? "✓" : "✗");
+
+    // Update Audit Analysis Data if provided
+    if (parsedAnalysisData !== undefined) {
+      walkout.auditSection.auditAnalysisData = parsedAnalysisData;
+    }
+
+    // Update Discrepancy Found if provided
+    if (auditDiscrepancyFoundOtherThanLC3Remarks !== undefined) {
+      walkout.auditSection.auditDiscrepancyFoundOtherThanLC3Remarks = Number(
+        auditDiscrepancyFoundOtherThanLC3Remarks,
+      );
+    }
+
+    // Update Discrepancy Remarks if provided
+    if (auditDiscrepancyRemarks !== undefined) {
+      walkout.auditSection.auditDiscrepancyRemarks = auditDiscrepancyRemarks;
+    }
+
+    // Update Discrepancy Fixed by LC3 if provided
+    if (auditDiscrepancyFixedByLC3 !== undefined) {
+      walkout.auditSection.auditDiscrepancyFixedByLC3 = Number(
+        auditDiscrepancyFixedByLC3,
+      );
+    }
+
+    // Update LC3 Remarks if provided
+    if (auditLc3Remarks !== undefined) {
+      walkout.auditSection.auditLc3Remarks = auditLc3Remarks;
+    }
+
+    // Update metadata
+    const currentTime = new Date();
+    walkout.auditSection.auditLastUpdatedAt = currentTime;
+    walkout.auditSection.auditLastUpdatedBy = userId;
+    walkout.lastUpdateOn = currentTime;
+
+    // Save the walkout
+    await walkout.save();
+
+    // Populate user references
+    const populatedWalkout = await Walkout.findById(id)
+      .populate("userId", "name email")
+      .populate("auditSection.auditLastUpdatedBy", "name email");
+
+    res.status(200).json({
+      success: true,
+      message: "Audit section submitted successfully",
+      data: populatedWalkout,
+    });
+  } catch (error) {
+    console.error("Error submitting/updating Audit section:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error submitting/updating Audit section",
+      error: error.message,
+    });
+  }
+};
+
 // Delete walkout (soft delete)
 exports.deleteWalkout = async (req, res) => {
   try {
