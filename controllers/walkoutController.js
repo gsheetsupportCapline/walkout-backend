@@ -1788,6 +1788,7 @@ exports.submitIvSection = async (req, res) => {
       ivRemarks,
       walkoutStatus, // Root level - from frontend
       pendingWith, // Root level - from frontend
+      isOnHoldAddressed, // Root level - from frontend
     } = req.body;
 
     console.log("📝 IV Section Data Received:");
@@ -1795,6 +1796,7 @@ exports.submitIvSection = async (req, res) => {
     console.log("  - ivRemarks:", ivRemarks ? "✓" : "✗");
     console.log("  - walkoutStatus:", walkoutStatus);
     console.log("  - pendingWith:", pendingWith);
+    console.log("  - isOnHoldAddressed:", isOnHoldAddressed);
 
     // Update IV Status if provided
     if (ivStatus !== undefined) {
@@ -1818,6 +1820,12 @@ exports.submitIvSection = async (req, res) => {
     }
     if (pendingWith !== undefined) {
       walkout.pendingWith = pendingWith;
+    }
+    if (isOnHoldAddressed !== undefined) {
+      // Convert lowercase to capitalize first letter (yes -> Yes, no -> No)
+      walkout.isOnHoldAddressed =
+        isOnHoldAddressed.charAt(0).toUpperCase() +
+        isOnHoldAddressed.slice(1).toLowerCase();
     }
 
     // Save the walkout
