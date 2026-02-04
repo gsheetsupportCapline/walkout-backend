@@ -301,17 +301,58 @@ const updateUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const { password, role, extraPermissions, isActive, ...updateData } =
-      req.body;
+    const {
+      password,
+      role,
+      extraPermissions,
+      isActive,
+      assignedOffice,
+      teamName,
+      ...updateData
+    } = req.body;
 
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      {
-        new: true,
-        runValidators: true,
-      },
-    )
+    // Update simple fields
+    Object.keys(updateData).forEach((key) => {
+      user[key] = updateData[key];
+    });
+
+    // Handle assignedOffice - completely replace the array
+    if (assignedOffice !== undefined) {
+      if (Array.isArray(assignedOffice)) {
+        // Check if it's array of objects or array of IDs
+        user.assignedOffice = assignedOffice.map((item) => {
+          // If item is already an object with officeId, keep it
+          if (typeof item === "object" && item.officeId) {
+            return { officeId: item.officeId };
+          }
+          // If item is just an ID string, convert to object
+          return { officeId: item };
+        });
+      } else {
+        user.assignedOffice = [];
+      }
+    }
+
+    // Handle teamName - completely replace the array
+    if (teamName !== undefined) {
+      if (Array.isArray(teamName)) {
+        // Check if it's array of objects or array of IDs
+        user.teamName = teamName.map((item) => {
+          // If item is already an object with teamId, keep it
+          if (typeof item === "object" && item.teamId) {
+            return { teamId: item.teamId };
+          }
+          // If item is just an ID string, convert to object
+          return { teamId: item };
+        });
+      } else {
+        user.teamName = [];
+      }
+    }
+
+    await user.save();
+
+    const updatedUser = await User.findById(req.params.id)
       .populate("teamName.teamId", "teamName teamPermissions")
       .populate("assignedOffice.officeId", "officeName regionId")
       .populate("approvedBy", "name email");
