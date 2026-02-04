@@ -747,6 +747,32 @@ const auditSectionSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// IV Section Schema
+const ivSectionSchema = new mongoose.Schema(
+  {
+    // IV Status
+    ivStatus: {
+      type: Number, // Radio button incrementalId or status value
+    },
+
+    // IV Remarks (Text field)
+    ivRemarks: {
+      type: String,
+      trim: true,
+    },
+
+    // Metadata
+    ivLastUpdatedAt: {
+      type: Date,
+    },
+    ivLastUpdatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  },
+  { _id: false },
+);
+
 // Main Walkout Schema
 const walkoutSchema = new mongoose.Schema(
   {
@@ -817,6 +843,10 @@ const walkoutSchema = new mongoose.Schema(
     },
     auditSection: {
       type: auditSectionSchema,
+      default: {},
+    },
+    ivSection: {
+      type: ivSectionSchema,
       default: {},
     },
 

@@ -1753,6 +1753,96 @@ exports.submitAuditSection = async (req, res) => {
   }
 };
 
+// ====================================
+// IV SECTION OPERATIONS
+// ====================================
+
+// Submit/Update IV Section
+exports.submitIvSection = async (req, res) => {
+  try {
+    console.log("🔷 IV Section Submit - Starting...");
+    console.log("📋 Request Params:", req.params);
+    console.log("📋 Request Body Keys:", Object.keys(req.body));
+
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // Find the walkout
+    const walkout = await Walkout.findById(id);
+
+    if (!walkout) {
+      return res.status(404).json({
+        success: false,
+        message: "Walkout not found",
+      });
+    }
+
+    // Initialize ivSection if it doesn't exist
+    if (!walkout.ivSection) {
+      walkout.ivSection = {};
+    }
+
+    // Extract IV data from request body
+    const {
+      ivStatus,
+      ivRemarks,
+      walkoutStatus, // Root level - from frontend
+      pendingWith, // Root level - from frontend
+    } = req.body;
+
+    console.log("📝 IV Section Data Received:");
+    console.log("  - ivStatus:", ivStatus);
+    console.log("  - ivRemarks:", ivRemarks ? "✓" : "✗");
+    console.log("  - walkoutStatus:", walkoutStatus);
+    console.log("  - pendingWith:", pendingWith);
+
+    // Update IV Status if provided
+    if (ivStatus !== undefined) {
+      walkout.ivSection.ivStatus = Number(ivStatus);
+    }
+
+    // Update IV Remarks if provided
+    if (ivRemarks !== undefined) {
+      walkout.ivSection.ivRemarks = ivRemarks;
+    }
+
+    // Update metadata
+    const currentTime = new Date();
+    walkout.ivSection.ivLastUpdatedAt = currentTime;
+    walkout.ivSection.ivLastUpdatedBy = userId;
+    walkout.lastUpdateOn = currentTime;
+
+    // Update root level fields if provided
+    if (walkoutStatus !== undefined) {
+      walkout.walkoutStatus = walkoutStatus;
+    }
+    if (pendingWith !== undefined) {
+      walkout.pendingWith = pendingWith;
+    }
+
+    // Save the walkout
+    await walkout.save();
+
+    // Populate user references
+    const populatedWalkout = await Walkout.findById(id)
+      .populate("userId", "name email")
+      .populate("ivSection.ivLastUpdatedBy", "name email");
+
+    res.status(200).json({
+      success: true,
+      message: "IV section submitted successfully",
+      data: populatedWalkout,
+    });
+  } catch (error) {
+    console.error("Error submitting/updating IV section:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error submitting/updating IV section",
+      error: error.message,
+    });
+  }
+};
+
 // Delete walkout (soft delete)
 exports.deleteWalkout = async (req, res) => {
   try {

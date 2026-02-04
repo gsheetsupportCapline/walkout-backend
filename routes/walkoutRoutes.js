@@ -9,6 +9,7 @@ const {
   updateOfficeSection,
   submitLc3Section,
   submitAuditSection,
+  submitIvSection,
   deleteWalkout,
   serveWalkoutImage,
   serveImageByImageId,
@@ -66,6 +67,9 @@ router.put(
 
 // Submit/Update Audit section - All authenticated users
 router.put("/:id/audit", protect, submitAuditSection);
+
+// Submit/Update IV section - All authenticated users
+router.put("/:id/iv", protect, submitIvSection);
 
 // Delete walkout - Admin/SuperAdmin only
 router.delete(
