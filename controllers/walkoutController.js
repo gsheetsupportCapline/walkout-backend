@@ -1175,8 +1175,18 @@ exports.updateOfficeSection = async (req, res) => {
     if (walkoutStatus !== undefined) {
       walkout.walkoutStatus = walkoutStatus;
     }
-    if (isOnHoldAddressed !== undefined) {
-      walkout.isOnHoldAddressed = isOnHoldAddressed;
+    if (
+      isOnHoldAddressed !== undefined &&
+      isOnHoldAddressed !== null &&
+      isOnHoldAddressed !== ""
+    ) {
+      // Convert to string and capitalize first letter (yes -> Yes, no -> No)
+      const value = String(isOnHoldAddressed).toLowerCase();
+      if (value === "yes") {
+        walkout.isOnHoldAddressed = "Yes";
+      } else if (value === "no") {
+        walkout.isOnHoldAddressed = "No";
+      }
     }
     if (pendingWith !== undefined) {
       walkout.pendingWith = pendingWith;
@@ -1542,8 +1552,18 @@ exports.submitLc3Section = async (req, res) => {
     if (walkoutStatus !== undefined) {
       walkout.walkoutStatus = walkoutStatus;
     }
-    if (isOnHoldAddressed !== undefined) {
-      walkout.isOnHoldAddressed = isOnHoldAddressed;
+    if (
+      isOnHoldAddressed !== undefined &&
+      isOnHoldAddressed !== null &&
+      isOnHoldAddressed !== ""
+    ) {
+      // Convert to string and capitalize first letter (yes -> Yes, no -> No)
+      const value = String(isOnHoldAddressed).toLowerCase();
+      if (value === "yes") {
+        walkout.isOnHoldAddressed = "Yes";
+      } else if (value === "no") {
+        walkout.isOnHoldAddressed = "No";
+      }
     }
     if (pendingWith !== undefined) {
       walkout.pendingWith = pendingWith;
@@ -1821,11 +1841,18 @@ exports.submitIvSection = async (req, res) => {
     if (pendingWith !== undefined) {
       walkout.pendingWith = pendingWith;
     }
-    if (isOnHoldAddressed !== undefined) {
-      // Convert lowercase to capitalize first letter (yes -> Yes, no -> No)
-      walkout.isOnHoldAddressed =
-        isOnHoldAddressed.charAt(0).toUpperCase() +
-        isOnHoldAddressed.slice(1).toLowerCase();
+    if (
+      isOnHoldAddressed !== undefined &&
+      isOnHoldAddressed !== null &&
+      isOnHoldAddressed !== ""
+    ) {
+      // Convert to string and capitalize first letter (yes -> Yes, no -> No)
+      const value = String(isOnHoldAddressed).toLowerCase();
+      if (value === "yes") {
+        walkout.isOnHoldAddressed = "Yes";
+      } else if (value === "no") {
+        walkout.isOnHoldAddressed = "No";
+      }
     }
 
     // Save the walkout
