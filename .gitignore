@@ -11,4 +11,5 @@ scripts/*.js.map
 # Documentation and testing files (not needed in production)
 documentation/
 postman/
+scripts/
 *.archive
