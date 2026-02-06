@@ -1,4 +1,5 @@
 const ImageExtractionLog = require("../models/ImageExtractionLog");
+const { toCSTDateString, parseCSTDateString } = require("./timezone");
 
 /**
  * Add extraction log entry for a specific section (office or lc3)
@@ -33,7 +34,7 @@ exports.addExtractionLog = async (data) => {
       triggeredBy,
       isRegeneration,
       status: "pending",
-      requestStartedAt: new Date(),
+      requestStartedAt: toCSTDateString(),
     };
 
     const sectionField =
@@ -145,8 +146,10 @@ exports.markAsCompleted = async (
     }
 
     const attempt = log[sectionField].extractions.id(attemptId);
-    const completedAt = new Date();
-    const duration = completedAt - attempt.requestStartedAt;
+    const completedAt = toCSTDateString();
+    const duration =
+      parseCSTDateString(completedAt) -
+      parseCSTDateString(attempt.requestStartedAt);
 
     // Update the attempt
     const updatedLog = await ImageExtractionLog.findOneAndUpdate(
@@ -199,8 +202,10 @@ exports.markAsFailed = async (formRefId, sectionType, attemptId, error) => {
     }
 
     const attempt = log[sectionField].extractions.id(attemptId);
-    const completedAt = new Date();
-    const duration = completedAt - attempt.requestStartedAt;
+    const completedAt = toCSTDateString();
+    const duration =
+      parseCSTDateString(completedAt) -
+      parseCSTDateString(attempt.requestStartedAt);
 
     // Update the attempt
     const updatedLog = await ImageExtractionLog.findOneAndUpdate(
@@ -372,7 +377,7 @@ exports.retryExtraction = async (logId) => {
       isRegeneration: true, // Retry is a regeneration
       retryCount: oldLog.retryCount + 1,
       status: "pending",
-      requestStartedAt: new Date(),
+      requestStartedAt: toCSTDateString(),
     });
 
     console.log(

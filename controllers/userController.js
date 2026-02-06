@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
+const { toCSTDateString } = require("../utils/timezone");
 
 const signup = async (req, res) => {
   try {
@@ -172,7 +173,7 @@ const activateUser = async (req, res) => {
     user.approvedBy = req.user._id;
 
     if (!user.approvedOn) {
-      user.approvedOn = Date.now();
+      user.approvedOn = toCSTDateString();
     }
 
     await user.save();

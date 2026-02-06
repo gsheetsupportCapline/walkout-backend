@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
+const { toCSTDateString } = require("../utils/timezone");
 
 // Archived Radio Button subdocument schema (same as original but with deletion tracking)
 const archivedRadioButtonSchema = new mongoose.Schema(
@@ -26,10 +28,10 @@ const archivedRadioButtonSchema = new mongoose.Schema(
       // The original _id before archiving
     },
   },
-  {
-    timestamps: true,
-  }
+  {},
 );
+
+applyStringTimestamps(archivedRadioButtonSchema);
 
 const archiveRadioButtonSchema = new mongoose.Schema(
   {
@@ -71,9 +73,9 @@ const archiveRadioButtonSchema = new mongoose.Schema(
       required: true,
     },
     deletedAt: {
-      type: Date,
+      type: String,
       required: true,
-      default: Date.now,
+      default: () => toCSTDateString(),
     },
     deletionReason: {
       type: String,
@@ -97,17 +99,18 @@ const archiveRadioButtonSchema = new mongoose.Schema(
     },
     // Store original timestamps for historical reference
     originalCreatedAt: {
-      type: Date,
+      type: String,
     },
     originalUpdatedAt: {
-      type: Date,
+      type: String,
     },
   },
   {
-    timestamps: true,
     collection: "archive-radio-buttons",
-  }
+  },
 );
+
+applyStringTimestamps(archiveRadioButtonSchema);
 
 // Indexes for faster queries
 archiveRadioButtonSchema.index({ originalId: 1 });
@@ -117,7 +120,7 @@ archiveRadioButtonSchema.index({ name: 1 });
 
 const ArchiveRadioButton = mongoose.model(
   "ArchiveRadioButton",
-  archiveRadioButtonSchema
+  archiveRadioButtonSchema,
 );
 
 module.exports = ArchiveRadioButton;

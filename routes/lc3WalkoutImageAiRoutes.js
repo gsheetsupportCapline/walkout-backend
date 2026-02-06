@@ -5,6 +5,7 @@ const Walkout = require("../models/Walkout");
 const {
   extractLc3WalkoutData,
 } = require("../controllers/lc3WalkoutImageAiController");
+const { toCSTDateString, parseCSTDateString } = require("../utils/timezone");
 
 /**
  * @desc    Re-extract data from LC3 walkout image using AI
@@ -55,8 +56,8 @@ router.post(
       // ====================================
       // AI REGENERATION RATE LIMITING
       // ====================================
-      const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour ago
+      const now = toCSTDateString();
+      const oneHourAgo = parseCSTDateString(now).getTime() - 60 * 60 * 1000; // 1 hour ago
 
       // Initialize aiRegenerationDetails if not exists
       if (!walkout.lc3WalkoutImage.aiRegenerationDetails) {
@@ -72,7 +73,8 @@ router.post(
       // Check if last regeneration was more than 1 hour ago
       const isMoreThanOneHour =
         !regenDetails.lastRegeneratedAt ||
-        regenDetails.lastRegeneratedAt < oneHourAgo;
+        parseCSTDateString(regenDetails.lastRegeneratedAt).getTime() <
+          oneHourAgo;
 
       // Reset hourly count if more than 1 hour has passed
       if (isMoreThanOneHour) {
@@ -84,11 +86,11 @@ router.post(
 
       // Check hourly limit (max 5 per hour)
       if (regenDetails.hourlyRegenerateCount >= 5) {
-        const timeUntilReset = new Date(
-          regenDetails.lastRegeneratedAt.getTime() + 60 * 60 * 1000,
-        );
+        const timeUntilReset =
+          parseCSTDateString(regenDetails.lastRegeneratedAt).getTime() +
+          60 * 60 * 1000;
         const minutesRemaining = Math.ceil(
-          (timeUntilReset - now) / (60 * 1000),
+          (timeUntilReset - parseCSTDateString(now).getTime()) / (60 * 1000),
         );
 
         // Parse existing extracted data to return
@@ -109,7 +111,7 @@ router.post(
             hourlyCount: regenDetails.hourlyRegenerateCount,
             totalCount: regenDetails.totalRegenerateCount,
             lastRegeneratedAt: regenDetails.lastRegeneratedAt,
-            retryAfter: timeUntilReset,
+            retryAfter: toCSTDateString(timeUntilReset),
           },
           data: {
             extractedData: existingData, // Return existing data for frontend rendering

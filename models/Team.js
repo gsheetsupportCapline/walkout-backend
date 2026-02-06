@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 const teamSchema = new mongoose.Schema(
   {
@@ -22,9 +23,9 @@ const teamSchema = new mongoose.Schema(
       default: "on",
     },
   },
-  {
-    timestamps: true,
-  }
+  {},
 );
+
+applyStringTimestamps(teamSchema);
 
 module.exports = mongoose.model("Team", teamSchema);

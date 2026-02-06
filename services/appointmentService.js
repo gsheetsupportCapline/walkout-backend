@@ -1,5 +1,6 @@
 const axios = require("axios");
 const moment = require("moment-timezone");
+const { toCSTDateString } = require("../utils/timezone");
 const Office = require("../models/Office");
 const PatientAppointment = require("../models/PatientAppointment");
 const PatientAppointmentArchive = require("../models/PatientAppointmentArchive");
@@ -12,7 +13,7 @@ const CST_TIMEZONE = "America/Chicago";
  * Get current date and time in CST timezone
  */
 const getCSTDateTime = () => {
-  return moment().tz(CST_TIMEZONE).toDate();
+  return toCSTDateString();
 };
 
 /**

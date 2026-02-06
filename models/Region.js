@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 const regionSchema = new mongoose.Schema(
   {
@@ -25,9 +26,9 @@ const regionSchema = new mongoose.Schema(
       default: "on",
     },
   },
-  {
-    timestamps: true,
-  }
+  {},
 );
+
+applyStringTimestamps(regionSchema);
 
 module.exports = mongoose.model("Region", regionSchema);

@@ -11,7 +11,7 @@ const RANGE = "A1:G";
  * Get current CST date-time
  */
 const getCSTDateTime = () => {
-  return moment().tz("America/Chicago").format("YYYY-MM-DD HH:mm:ss [CST]");
+  return moment().tz("America/Chicago").format("YYYY-MM-DD HH:mm:ss");
 };
 
 /**

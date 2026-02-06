@@ -33,11 +33,11 @@ const patientAppointmentArchiveSchema = new mongoose.Schema({
     required: true,
   },
   "updated-on": {
-    type: Date,
+    type: String,
     required: true,
   },
   "moved-on": {
-    type: Date,
+    type: String,
     required: true,
   },
 });

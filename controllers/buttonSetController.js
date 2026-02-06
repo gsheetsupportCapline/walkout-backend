@@ -1,5 +1,6 @@
 const ButtonSet = require("../models/ButtonSet");
 const ArchiveRadioButton = require("../models/ArchiveRadioButton");
+const { toCSTDateString } = require("../utils/timezone");
 
 // ====================================
 // BUTTON SET CRUD OPERATIONS
@@ -133,7 +134,7 @@ exports.updateButtonSet = async (req, res) => {
     const buttonSet = await ButtonSet.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
       .populate("createdBy", "name email")
       .populate("updatedBy", "name email");
@@ -200,7 +201,7 @@ exports.deleteButtonSet = async (req, res) => {
       createdBy: buttonSet.createdBy,
       updatedBy: buttonSet.updatedBy,
       deletedBy: req.user._id,
-      deletedAt: new Date(),
+      deletedAt: toCSTDateString(),
       deletionReason: req.body.deletionReason || "Manual deletion",
       deletionType: "set",
       originalCreatedAt: buttonSet.createdAt,
@@ -316,7 +317,7 @@ exports.getButtonsBySetId = async (req, res) => {
 
     if (visibility !== undefined) {
       buttons = buttons.filter(
-        (btn) => btn.visibility === (visibility === "true")
+        (btn) => btn.visibility === (visibility === "true"),
       );
     }
 
@@ -399,7 +400,7 @@ exports.updateButton = async (req, res) => {
     // Check if new name conflicts with existing button (excluding current button)
     if (name && name !== button.name) {
       const existingButton = buttonSet.buttons.find(
-        (btn) => btn.name === name && btn._id.toString() !== buttonId
+        (btn) => btn.name === name && btn._id.toString() !== buttonId,
       );
       if (existingButton) {
         return res.status(400).json({
@@ -479,7 +480,7 @@ exports.deleteButton = async (req, res) => {
       createdBy: buttonSet.createdBy,
       updatedBy: buttonSet.updatedBy,
       deletedBy: req.user._id,
-      deletedAt: new Date(),
+      deletedAt: toCSTDateString(),
       deletionReason: req.body.deletionReason || "Individual button deletion",
       deletionType: "button", // Mark as individual button deletion
       parentSetId: buttonSet._id, // Store parent set ID
@@ -548,7 +549,7 @@ exports.bulkCreateButtons = async (req, res) => {
 
         // Check for duplicate name in set
         const existingButton = buttonSet.buttons.find(
-          (btn) => btn.name === buttonData.name
+          (btn) => btn.name === buttonData.name,
         );
         if (existingButton) {
           errors.push({
@@ -654,7 +655,7 @@ exports.bulkUpdateButtons = async (req, res) => {
           const existingButton = buttonSet.buttons.find(
             (btn) =>
               btn.name === updateData.name &&
-              btn._id.toString() !== updateData.id
+              btn._id.toString() !== updateData.id,
           );
           if (existingButton) {
             errors.push({
@@ -873,7 +874,7 @@ exports.restoreButtonSet = async (req, res) => {
 
         // Check if button with same name already exists in the set
         const existingButton = parentSet.buttons.find(
-          (btn) => btn.name === buttonToRestore.name
+          (btn) => btn.name === buttonToRestore.name,
         );
 
         if (existingButton) {
@@ -1068,7 +1069,7 @@ exports.addUsedInReferences = async (req, res) => {
 
     // Add unique references to usedIn array
     const newReferences = references.filter(
-      (ref) => !buttonSet.usedIn.includes(ref)
+      (ref) => !buttonSet.usedIn.includes(ref),
     );
 
     if (newReferences.length === 0) {
@@ -1127,7 +1128,7 @@ exports.removeUsedInReferences = async (req, res) => {
     // Remove references from usedIn array
     const originalLength = buttonSet.usedIn.length;
     buttonSet.usedIn = buttonSet.usedIn.filter(
-      (ref) => !references.includes(ref)
+      (ref) => !references.includes(ref),
     );
 
     const removedCount = originalLength - buttonSet.usedIn.length;

@@ -1,5 +1,6 @@
 const cron = require("node-cron");
 const { syncProviderSchedule } = require("../services/providerScheduleService");
+const { toCSTDateString } = require("../utils/timezone");
 
 /**
  * Initialize Provider Schedule Sync Cron Job
@@ -14,11 +15,7 @@ const initProviderScheduleCron = () => {
     cronExpression,
     async () => {
       console.log("\n🔄 Cron Job Triggered: Provider Schedule Sync");
-      console.log(
-        `Time: ${new Date().toLocaleString("en-US", {
-          timeZone: "America/Chicago",
-        })} CST`
-      );
+      console.log(`Time: ${toCSTDateString()} CST`);
 
       try {
         await syncProviderSchedule();
@@ -29,7 +26,7 @@ const initProviderScheduleCron = () => {
     {
       scheduled: true,
       timezone: "America/Chicago",
-    }
+    },
   );
 
   console.log("✓ Provider Schedule sync cron job initialized");
@@ -37,7 +34,7 @@ const initProviderScheduleCron = () => {
   console.log(`✓ Cron Expression: ${cronExpression}`);
   console.log(`✓ Timezone: America/Chicago (CST)`);
   console.log(
-    `✓ Next run times: 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 CST`
+    `✓ Next run times: 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 CST`,
   );
 };
 

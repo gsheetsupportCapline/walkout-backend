@@ -1,4 +1,5 @@
 const { syncAllAppointments } = require("../services/appointmentService");
+const { toCSTDateString } = require("../utils/timezone");
 const SyncLog = require("../models/SyncLog");
 const PatientAppointment = require("../models/PatientAppointment");
 const Walkout = require("../models/Walkout");
@@ -622,10 +623,10 @@ exports.createWalkInAppointment = async (req, res) => {
       "insurance-name": insuranceName || "",
       "insurance-type": insuranceType || "",
       "office-name": officeName,
-      "updated-on": new Date(),
+      "updated-on": toCSTDateString(),
       mode: "manual",
       isWalkIn: true,
-      createdOn: new Date(),
+      createdOn: toCSTDateString(),
       createdBy: req.user._id,
       isWalkoutSubmittedToLC3: "No",
     });
@@ -712,7 +713,7 @@ exports.updateWalkInAppointment = async (req, res) => {
     if (insuranceName) appointment["insurance-name"] = insuranceName;
     if (insuranceType) appointment["insurance-type"] = insuranceType;
     if (officeName) appointment["office-name"] = officeName;
-    appointment["updated-on"] = new Date();
+    appointment["updated-on"] = toCSTDateString();
     appointment.updatedBy = req.user._id.toString();
 
     await appointment.save();

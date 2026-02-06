@@ -1,4 +1,5 @@
 const ImageExtractionLog = require("../models/ImageExtractionLog");
+const { toCSTDate, toCSTDateString } = require("../utils/timezone");
 const {
   getLogsByFormRefId,
   getLogsByStatus,
@@ -40,8 +41,8 @@ exports.getExtractionLogs = async (req, res) => {
     // Date range filter
     if (startDate || endDate) {
       query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) query.createdAt.$lte = new Date(endDate);
+      if (startDate) query.createdAt.$gte = toCSTDateString(startDate);
+      if (endDate) query.createdAt.$lte = toCSTDateString(endDate);
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -258,7 +259,9 @@ exports.deleteExtractionLog = async (req, res) => {
 exports.getDashboardSummary = async (req, res) => {
   try {
     // Get stats for last 24 hours
-    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const last24Hours = toCSTDateString(
+      new Date(Date.now() - 24 * 60 * 60 * 1000),
+    );
 
     const recentStats = await ImageExtractionLog.aggregate([
       {

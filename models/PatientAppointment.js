@@ -30,7 +30,7 @@ const patientAppointmentSchema = new mongoose.Schema({
     required: true,
   },
   "updated-on": {
-    type: Date,
+    type: String,
     required: true,
   },
   mode: {
@@ -44,7 +44,7 @@ const patientAppointmentSchema = new mongoose.Schema({
     index: true,
   },
   createdOn: {
-    type: Date,
+    type: String,
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

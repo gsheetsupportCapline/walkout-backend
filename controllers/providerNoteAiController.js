@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { toCSTDateString } = require("../utils/timezone");
 
 /**
  * @desc    Analyze provider and hygienist notes using Gemini AI
@@ -72,7 +73,7 @@ ${providerText || ""}
 
 Text 1 ends here.
 
-// cache‑buster: ${new Date().toISOString()}
+// cache‑buster: ${toCSTDateString()}
 
 Text 2 (hygienist note):
 ${hygienistText || ""}

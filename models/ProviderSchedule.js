@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 const providerScheduleSchema = new mongoose.Schema(
   {
@@ -41,10 +42,11 @@ const providerScheduleSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,
     collection: "provider-schedule",
-  }
+  },
 );
+
+applyStringTimestamps(providerScheduleSchema);
 
 // Compound index for office-name + dos (for querying and updates)
 providerScheduleSchema.index({ "office-name": 1, dos: 1 });

@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
+const { toCSTDateString } = require("../utils/timezone");
 
 // Archived Dropdown Option subdocument schema (same as original but with deletion tracking)
 const archivedDropdownOptionSchema = new mongoose.Schema(
@@ -26,10 +28,10 @@ const archivedDropdownOptionSchema = new mongoose.Schema(
       // The original _id before archiving
     },
   },
-  {
-    timestamps: true,
-  }
+  {},
 );
+
+applyStringTimestamps(archivedDropdownOptionSchema);
 
 const archiveDropdownSchema = new mongoose.Schema(
   {
@@ -71,9 +73,9 @@ const archiveDropdownSchema = new mongoose.Schema(
       required: true,
     },
     deletedAt: {
-      type: Date,
+      type: String,
       required: true,
-      default: Date.now,
+      default: () => toCSTDateString(),
     },
     deletionReason: {
       type: String,
@@ -97,17 +99,18 @@ const archiveDropdownSchema = new mongoose.Schema(
     },
     // Store original timestamps for historical reference
     originalCreatedAt: {
-      type: Date,
+      type: String,
     },
     originalUpdatedAt: {
-      type: Date,
+      type: String,
     },
   },
   {
-    timestamps: true,
     collection: "archive-dropdowns",
-  }
+  },
 );
+
+applyStringTimestamps(archiveDropdownSchema);
 
 // Indexes for faster queries
 archiveDropdownSchema.index({ originalId: 1 });
@@ -117,7 +120,7 @@ archiveDropdownSchema.index({ name: 1 });
 
 const ArchiveDropdown = mongoose.model(
   "ArchiveDropdown",
-  archiveDropdownSchema
+  archiveDropdownSchema,
 );
 
 module.exports = ArchiveDropdown;

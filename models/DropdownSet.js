@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 // Dropdown Option subdocument schema
 const dropdownOptionSchema = new mongoose.Schema(
@@ -22,10 +23,10 @@ const dropdownOptionSchema = new mongoose.Schema(
       default: true,
     },
   },
-  {
-    timestamps: true,
-  }
+  {},
 );
+
+applyStringTimestamps(dropdownOptionSchema);
 
 const dropdownSetSchema = new mongoose.Schema(
   {
@@ -66,10 +67,11 @@ const dropdownSetSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,
     collection: "dropdown-sets",
-  }
+  },
 );
+
+applyStringTimestamps(dropdownSetSchema);
 
 // Indexes for faster queries (name index is auto-created by unique: true)
 dropdownSetSchema.index({ isActive: 1 });

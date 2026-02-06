@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const { toCSTDateString } = require("../utils/timezone");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 /**
  * Individual Extraction Attempt Schema
@@ -16,7 +18,7 @@ const extractionAttemptSchema = new mongoose.Schema(
       trim: true,
     },
     imageUploadedAt: {
-      type: Date,
+      type: String,
     },
 
     // Extraction Mode
@@ -29,12 +31,12 @@ const extractionAttemptSchema = new mongoose.Schema(
 
     // Process Timing
     requestStartedAt: {
-      type: Date,
+      type: String,
       required: true,
-      default: Date.now,
+      default: () => toCSTDateString(),
     },
     requestCompletedAt: {
-      type: Date,
+      type: String,
     },
     processDuration: {
       type: Number, // Duration in milliseconds
@@ -77,10 +79,11 @@ const extractionAttemptSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,
     _id: true, // Keep _id for each attempt
   },
 );
+
+applyStringTimestamps(extractionAttemptSchema);
 
 /**
  * Image Extraction Log Schema
@@ -105,7 +108,7 @@ const imageExtractionLogSchema = new mongoose.Schema(
         trim: true,
       },
       dateOfService: {
-        type: Date,
+        type: String,
         required: true,
       },
       officeName: {
@@ -126,10 +129,11 @@ const imageExtractionLogSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,
     collection: "image_extraction_logs",
   },
 );
+
+applyStringTimestamps(imageExtractionLogSchema);
 
 // Indexes for efficient querying
 imageExtractionLogSchema.index({ formRefId: 1 });

@@ -1,6 +1,7 @@
 const Walkout = require("../models/Walkout");
 const PatientAppointment = require("../models/PatientAppointment");
 const validateOfficeSection = require("../utils/validateOfficeSection");
+const { toCSTDateString } = require("../utils/timezone");
 // const { uploadToGoogleDrive } = require("../utils/driveUpload"); // Google Drive (deprecated)
 const { uploadToS3 } = require("../utils/s3Upload"); // AWS S3 (new)
 
@@ -63,7 +64,7 @@ exports.submitOfficeSection = async (req, res) => {
       prcUpdatedInRouteSheet,
       narrative,
       newOfficeNote,
-      openTime,
+      officeOpenTime,
       walkoutStatus, // Root level - from frontend (can update status)
       isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
       pendingWith, // Root level - from frontend
@@ -522,7 +523,7 @@ exports.submitOfficeSection = async (req, res) => {
 
       // Set status to office_submitted and submitToLC3 time
       walkoutStatusDefault = "office_submitted";
-      submitToLC3Time = new Date();
+      submitToLC3Time = toCSTDateString();
     }
 
     // Handle office historical notes
@@ -531,14 +532,17 @@ exports.submitOfficeSection = async (req, res) => {
       officeHistoricalNotes.push({
         note: newOfficeNote.trim(),
         addedBy: req.user._id,
-        addedAt: new Date(),
+        addedAt: toCSTDateString(),
       });
     }
     officeData.officeHistoricalNotes = officeHistoricalNotes;
 
     // Metadata (always set these)
-    const currentTime = new Date();
+    const currentTime = toCSTDateString();
     officeData.officeSubmittedBy = req.user._id;
+    if (officeOpenTime !== undefined && officeOpenTime !== "") {
+      officeData.officeOpenTime = officeOpenTime;
+    }
     officeData.officeSubmittedAt = currentTime;
     officeData.officeLastUpdatedAt = currentTime;
     officeData.officeLastUpdatedBy = req.user._id;
@@ -665,9 +669,8 @@ exports.submitOfficeSection = async (req, res) => {
       appointmentInfo: parsedAppointmentInfo, // NEW: Required appointment info
       officeWalkoutSnip: officeWalkoutSnipData, // NEW: Image data (if uploaded)
       checkImage: checkImageData, // NEW: Check image data (if uploaded)
-      openTime: openTime || new Date(),
       submitToLC3: submitToLC3Time,
-      lastUpdateOn: new Date(),
+      lastUpdateOn: toCSTDateString(),
       officeSection: officeData,
       walkoutStatus: walkoutStatus || walkoutStatusDefault, // Use frontend value or calculated default
       isOnHoldAddressed: isOnHoldAddressed || undefined, // Root level - from frontend
@@ -924,6 +927,7 @@ exports.updateOfficeSection = async (req, res) => {
       walkoutStatus: req.body.walkoutStatus, // Root level
       isOnHoldAddressed: req.body.isOnHoldAddressed, // Root level
       pendingWith: req.body.pendingWith, // Root level
+      officeOpenTime: req.body.officeOpenTime,
     };
 
     const {
@@ -964,6 +968,7 @@ exports.updateOfficeSection = async (req, res) => {
       walkoutStatus, // Root level
       isOnHoldAddressed, // Root level
       pendingWith, // Root level
+      officeOpenTime,
     } = convertedBody;
 
     const walkout = await Walkout.findById(id);
@@ -1018,6 +1023,10 @@ exports.updateOfficeSection = async (req, res) => {
       officeFirstSubmittedBy: firstSubmittedBy, // Preserve
     };
 
+    if (officeOpenTime !== undefined && officeOpenTime !== "") {
+      walkout.officeSection.officeOpenTime = officeOpenTime;
+    }
+
     // Set only validated and conditionally required fields
     Object.keys(validation.cleanData).forEach((key) => {
       walkout.officeSection[key] = validation.cleanData[key];
@@ -1028,7 +1037,7 @@ exports.updateOfficeSection = async (req, res) => {
       walkout.officeSection.officeHistoricalNotes.push({
         note: newOfficeNote.trim(),
         addedBy: req.user._id,
-        addedAt: new Date(),
+        addedAt: toCSTDateString(),
       });
     }
 
@@ -1115,9 +1124,9 @@ exports.updateOfficeSection = async (req, res) => {
     }
 
     // Update metadata
-    walkout.officeSection.officeLastUpdatedAt = new Date();
+    walkout.officeSection.officeLastUpdatedAt = toCSTDateString();
     walkout.officeSection.officeLastUpdatedBy = req.user._id;
-    walkout.lastUpdateOn = new Date();
+    walkout.lastUpdateOn = toCSTDateString();
 
     // ====================================
     // CALCULATE isWalkoutSubmittedToLC3
@@ -1315,6 +1324,7 @@ exports.submitLc3Section = async (req, res) => {
       isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
       pendingWith, // Root level - from frontend
       isCompleted, // NEW: Flag to indicate if LC3 is being marked as completed
+      lc3OpenTime,
       sessionStartDateTime, // NEW: Session tracking - start time from frontend
       sessionEndDateTime, // NEW: Session tracking - end time from frontend (when submitting)
     } = req.body;
@@ -1427,7 +1437,7 @@ exports.submitLc3Section = async (req, res) => {
       walkout.lc3Section.onHoldNotes.push({
         note: onHoldNote,
         addedBy: userId,
-        addedAt: new Date(),
+        addedAt: toCSTDateString(),
       });
     }
 
@@ -1452,8 +1462,8 @@ exports.submitLc3Section = async (req, res) => {
       // Create new session object
       const newSession = {
         user: userId,
-        startDateTime: startTime,
-        endDateTime: endTime,
+        startDateTime: sessionStartDateTime,
+        endDateTime: sessionEndDateTime,
         duration: durationSeconds,
       };
 
@@ -1527,12 +1537,16 @@ exports.submitLc3Section = async (req, res) => {
 
     // Update submission metadata
     const isFirstSubmit = !walkout.lc3Section.lc3SubmittedAt;
-    const currentTime = new Date();
+    const currentTime = toCSTDateString();
 
     if (isFirstSubmit) {
       walkout.lc3Section.lc3SubmittedAt = currentTime;
       walkout.lc3Section.lc3SubmittedBy = userId;
       walkout.walkoutStatus = "lc3_submitted";
+    }
+
+    if (lc3OpenTime !== undefined && lc3OpenTime !== "") {
+      walkout.lc3Section.lc3OpenTime = lc3OpenTime;
     }
 
     walkout.lc3Section.lc3LastUpdatedAt = currentTime;
@@ -1680,6 +1694,7 @@ exports.submitAuditSection = async (req, res) => {
       auditDiscrepancyRemarks,
       auditDiscrepancyFixedByLC3,
       auditLc3Remarks,
+      auditOpenTime,
     } = req.body;
 
     // Parse auditAnalysisData if it's a string (from FormData)
@@ -1745,7 +1760,10 @@ exports.submitAuditSection = async (req, res) => {
     }
 
     // Update metadata
-    const currentTime = new Date();
+    const currentTime = toCSTDateString();
+    if (auditOpenTime !== undefined && auditOpenTime !== "") {
+      walkout.auditSection.auditOpenTime = auditOpenTime;
+    }
     walkout.auditSection.auditLastUpdatedAt = currentTime;
     walkout.auditSection.auditLastUpdatedBy = userId;
     walkout.lastUpdateOn = currentTime;
@@ -1829,7 +1847,7 @@ exports.submitIvSection = async (req, res) => {
     }
 
     // Update metadata
-    const currentTime = new Date();
+    const currentTime = toCSTDateString();
     walkout.ivSection.ivLastUpdatedAt = currentTime;
     walkout.ivSection.ivLastUpdatedBy = userId;
     walkout.lastUpdateOn = currentTime;

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 const officeSchema = new mongoose.Schema(
   {
@@ -29,9 +30,9 @@ const officeSchema = new mongoose.Schema(
       default: "on",
     },
   },
-  {
-    timestamps: true,
-  }
+  {},
 );
+
+applyStringTimestamps(officeSchema);
 
 module.exports = mongoose.model("Office", officeSchema);

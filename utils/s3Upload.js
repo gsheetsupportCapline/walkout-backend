@@ -1,6 +1,7 @@
 const { PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const initializeS3 = require("../config/s3");
+const { toCSTDateString } = require("./timezone");
 
 // Initialize S3 client lazily (when first needed)
 let s3Client = null;
@@ -80,7 +81,7 @@ const uploadToS3 = async (
         patientId: patientId.toString(),
         dateOfService: dateOfService,
         officeName: officeName,
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: toCSTDateString(),
       },
     });
 
@@ -93,7 +94,7 @@ const uploadToS3 = async (
     return {
       fileKey: s3Key, // S3 key (like Google Drive file ID)
       fileName: fileName,
-      uploadedAt: new Date(),
+      uploadedAt: toCSTDateString(),
       bucket: BUCKET_NAME,
       region: process.env.AWS_REGION || "us-east-1",
     };

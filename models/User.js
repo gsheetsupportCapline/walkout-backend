@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { toCSTDateString } = require("../utils/timezone");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 const userSchema = new mongoose.Schema(
   {
@@ -51,11 +53,11 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     signedUpOn: {
-      type: Date,
-      default: Date.now,
+      type: String,
+      default: () => toCSTDateString(),
     },
     approvedOn: {
-      type: Date,
+      type: String,
       default: null,
     },
     teamName: [
@@ -75,10 +77,10 @@ const userSchema = new mongoose.Schema(
       },
     ],
   },
-  {
-    timestamps: true,
-  }
+  {},
 );
+
+applyStringTimestamps(userSchema);
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {

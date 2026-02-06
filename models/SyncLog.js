@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const syncExecutionSchema = new mongoose.Schema({
   executedAt: {
-    type: Date,
+    type: String,
     required: true,
   },
   successfulOffices: {
@@ -93,7 +93,7 @@ const syncLogSchema = new mongoose.Schema({
     default: 0,
   },
   lastSyncAt: {
-    type: Date,
+    type: String,
   },
 });
 

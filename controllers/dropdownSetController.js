@@ -1,5 +1,6 @@
 const DropdownSet = require("../models/DropdownSet");
 const ArchiveDropdown = require("../models/ArchiveDropdown");
+const { toCSTDateString } = require("../utils/timezone");
 
 // ====================================
 // DROPDOWN SET CRUD OPERATIONS
@@ -133,7 +134,7 @@ exports.updateDropdownSet = async (req, res) => {
     const dropdownSet = await DropdownSet.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
       .populate("createdBy", "name email")
       .populate("updatedBy", "name email");
@@ -200,7 +201,7 @@ exports.deleteDropdownSet = async (req, res) => {
       createdBy: dropdownSet.createdBy,
       updatedBy: dropdownSet.updatedBy,
       deletedBy: req.user._id,
-      deletedAt: new Date(),
+      deletedAt: toCSTDateString(),
       deletionReason: req.body.deletionReason || "Manual deletion",
       deletionType: "set",
       originalCreatedAt: dropdownSet.createdAt,
@@ -316,7 +317,7 @@ exports.getOptionsBySetId = async (req, res) => {
 
     if (visibility !== undefined) {
       options = options.filter(
-        (opt) => opt.visibility === (visibility === "true")
+        (opt) => opt.visibility === (visibility === "true"),
       );
     }
 
@@ -399,7 +400,7 @@ exports.updateOption = async (req, res) => {
     // Check if new name conflicts with existing option (excluding current option)
     if (name && name !== option.name) {
       const existingOption = dropdownSet.options.find(
-        (opt) => opt.name === name && opt._id.toString() !== optionId
+        (opt) => opt.name === name && opt._id.toString() !== optionId,
       );
       if (existingOption) {
         return res.status(400).json({
@@ -479,7 +480,7 @@ exports.deleteOption = async (req, res) => {
       createdBy: dropdownSet.createdBy,
       updatedBy: dropdownSet.updatedBy,
       deletedBy: req.user._id,
-      deletedAt: new Date(),
+      deletedAt: toCSTDateString(),
       deletionReason: req.body.deletionReason || "Individual option deletion",
       deletionType: "option", // Mark as individual option deletion
       parentSetId: dropdownSet._id, // Store parent set ID
@@ -548,7 +549,7 @@ exports.bulkCreateOptions = async (req, res) => {
 
         // Check for duplicate name in set
         const existingOption = dropdownSet.options.find(
-          (opt) => opt.name === optionData.name
+          (opt) => opt.name === optionData.name,
         );
         if (existingOption) {
           errors.push({
@@ -654,7 +655,7 @@ exports.bulkUpdateOptions = async (req, res) => {
           const existingOption = dropdownSet.options.find(
             (opt) =>
               opt.name === updateData.name &&
-              opt._id.toString() !== updateData.id
+              opt._id.toString() !== updateData.id,
           );
           if (existingOption) {
             errors.push({
@@ -873,7 +874,7 @@ exports.restoreDropdownSet = async (req, res) => {
 
         // Check if option with same name already exists in the set
         const existingOption = parentSet.options.find(
-          (opt) => opt.name === optionToRestore.name
+          (opt) => opt.name === optionToRestore.name,
         );
 
         if (existingOption) {
@@ -1068,7 +1069,7 @@ exports.addUsedInReferences = async (req, res) => {
 
     // Add unique references to usedIn array
     const newReferences = references.filter(
-      (ref) => !dropdownSet.usedIn.includes(ref)
+      (ref) => !dropdownSet.usedIn.includes(ref),
     );
 
     if (newReferences.length === 0) {
@@ -1127,7 +1128,7 @@ exports.removeUsedInReferences = async (req, res) => {
     // Remove references from usedIn array
     const originalLength = dropdownSet.usedIn.length;
     dropdownSet.usedIn = dropdownSet.usedIn.filter(
-      (ref) => !references.includes(ref)
+      (ref) => !references.includes(ref),
     );
 
     const removedCount = originalLength - dropdownSet.usedIn.length;

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 // Radio Button subdocument schema
 const radioButtonSchema = new mongoose.Schema(
@@ -22,10 +23,10 @@ const radioButtonSchema = new mongoose.Schema(
       default: true,
     },
   },
-  {
-    timestamps: true,
-  }
+  {},
 );
+
+applyStringTimestamps(radioButtonSchema);
 
 const buttonSetSchema = new mongoose.Schema(
   {
@@ -66,10 +67,11 @@ const buttonSetSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,
     collection: "button-sets",
-  }
+  },
 );
+
+applyStringTimestamps(buttonSetSchema);
 
 // Indexes for faster queries (name index is auto-created by unique: true)
 buttonSetSchema.index({ isActive: 1 });

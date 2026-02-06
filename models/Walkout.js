@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const { toCSTDateString } = require("../utils/timezone");
+const { applyStringTimestamps } = require("../utils/stringTimestamps");
 
 // ====================================
 // APPOINTMENT INFORMATION SCHEMA
@@ -11,7 +13,7 @@ const appointmentInfoSchema = new mongoose.Schema(
       trim: true,
     },
     dateOfService: {
-      type: Date,
+      type: String,
       required: true,
     },
     officeName: {
@@ -37,7 +39,7 @@ const officeWalkoutSnipSchema = new mongoose.Schema(
       trim: true,
     },
     uploadedAt: {
-      type: Date,
+      type: String,
     },
     extractedData: {
       type: String,
@@ -54,7 +56,7 @@ const officeWalkoutSnipSchema = new mongoose.Schema(
         default: 0, // Resets after 1 hour
       },
       lastRegeneratedAt: {
-        type: Date, // Timestamp of last regeneration
+        type: String, // Timestamp of last regeneration
       },
     },
   },
@@ -75,7 +77,7 @@ const checkImageSchema = new mongoose.Schema(
       trim: true,
     },
     uploadedAt: {
-      type: Date,
+      type: String,
     },
     extractedData: {
       type: String,
@@ -99,7 +101,7 @@ const lc3WalkoutImageSchema = new mongoose.Schema(
       trim: true,
     },
     uploadedAt: {
-      type: Date,
+      type: String,
     },
     extractedData: {
       type: String,
@@ -116,7 +118,7 @@ const lc3WalkoutImageSchema = new mongoose.Schema(
         default: 0, // Resets after 1 hour
       },
       lastRegeneratedAt: {
-        type: Date, // Timestamp of last regeneration
+        type: String, // Timestamp of last regeneration
       },
     },
   },
@@ -141,9 +143,9 @@ const officeHistoricalNoteSchema = new mongoose.Schema(
       required: true,
     },
     addedAt: {
-      type: Date,
+      type: String,
       required: true,
-      default: Date.now,
+      default: () => toCSTDateString(),
     },
   },
   { _id: true },
@@ -304,11 +306,14 @@ const officeSectionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    officeOpenTime: {
+      type: String,
+    },
     officeSubmittedAt: {
-      type: Date,
+      type: String,
     },
     officeFirstSubmittedAt: {
-      type: Date,
+      type: String,
       // Set only on first submit, never updated after that
     },
     officeFirstSubmittedBy: {
@@ -317,7 +322,7 @@ const officeSectionSchema = new mongoose.Schema(
       // Set only on first submit, never updated after that
     },
     officeLastUpdatedAt: {
-      type: Date,
+      type: String,
     },
     officeLastUpdatedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -359,8 +364,8 @@ const lc3HistoricalNoteSchema = new mongoose.Schema(
       required: true,
     },
     addedAt: {
-      type: Date,
-      default: Date.now,
+      type: String,
+      default: () => toCSTDateString(),
     },
   },
   { _id: true },
@@ -375,19 +380,21 @@ const lc3SessionSchema = new mongoose.Schema(
       required: true,
     },
     startDateTime: {
-      type: Date,
+      type: String,
       required: true,
     },
     endDateTime: {
-      type: Date,
+      type: String,
     },
     duration: {
       type: Number, // Duration in seconds
       default: 0,
     },
   },
-  { _id: true, timestamps: true },
+  { _id: true },
 );
+
+applyStringTimestamps(lc3SessionSchema);
 
 // LC3 Section Schema
 const lc3SectionSchema = new mongoose.Schema(
@@ -677,22 +684,25 @@ const lc3SectionSchema = new mongoose.Schema(
     },
 
     // Submission Metadata
+    lc3OpenTime: {
+      type: String,
+    },
     lc3SubmittedAt: {
-      type: Date,
+      type: String,
     },
     lc3SubmittedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
     lc3LastUpdatedAt: {
-      type: Date,
+      type: String,
     },
     lc3LastUpdatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
     lc3CompletedAt: {
-      type: Date,
+      type: String,
       // Set only once when LC3 section is marked as completed, never updated after that
     },
     lc3CompletedBy: {
@@ -736,8 +746,11 @@ const auditSectionSchema = new mongoose.Schema(
     },
 
     // Metadata
+    auditOpenTime: {
+      type: String,
+    },
     auditLastUpdatedAt: {
-      type: Date,
+      type: String,
     },
     auditLastUpdatedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -763,7 +776,7 @@ const ivSectionSchema = new mongoose.Schema(
 
     // Metadata
     ivLastUpdatedAt: {
-      type: Date,
+      type: String,
     },
     ivLastUpdatedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -817,19 +830,14 @@ const walkoutSchema = new mongoose.Schema(
     },
 
     // Timestamps
-    openTime: {
-      type: Date,
-      required: true,
-      default: Date.now,
-    },
     submitToLC3: {
-      type: Date,
+      type: String,
       // Set only on first submit, never updated after that
     },
     lastUpdateOn: {
-      type: Date,
+      type: String,
       required: true,
-      default: Date.now,
+      default: () => toCSTDateString(),
     },
 
     // Sections
@@ -877,10 +885,11 @@ const walkoutSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,
     collection: "walkouts",
   },
 );
+
+applyStringTimestamps(walkoutSchema);
 
 // Indexes for faster queries
 walkoutSchema.index({ userId: 1, createdAt: -1 });
