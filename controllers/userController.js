@@ -2,6 +2,39 @@ const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const { toCSTDateString } = require("../utils/timezone");
 
+// Allowed email domains for signup
+const ALLOWED_EMAIL_DOMAINS = [
+  "winniefamilydental.com",
+  "rockdaledental.com",
+  "riverwalkdentalpotranco.com",
+  "stellardentaltx.com",
+  "mathisfamilydental.com",
+  "riverwalkdentaldevine.com",
+  "aransasdental.com",
+  "jasperfamilydental.com",
+  "calallendental.com",
+  "grangerlanddental.com",
+  "westgreenfamilydental.com",
+  "springtownsmilestx.com",
+  "lavacadental.com",
+  "libertyfamilydental.com",
+  "riverwalkdentalorthodontics.com",
+  "huffmansmilesdental.com",
+  "splendorafamilydental.com",
+  "sintondental.com",
+  "crosbyfamilydental.com",
+  "lytledental.com",
+  "caplineservices.com",
+  "smilepoint.us",
+  "smilepointdental.com",
+  "benbrookfamilydental.com",
+  "smilepointdentalnm.com",
+  "sterlingsmilesazle.com",
+  "smilepointdentalcare.com",
+  "smilepointdentalvictoria.com",
+  "caplinedentalservices.com",
+];
+
 const signup = async (req, res) => {
   try {
     const { name, email, username, password, teamName, assignedOffice, role } =
@@ -10,6 +43,14 @@ const signup = async (req, res) => {
     if (!name || !email || !username || !password) {
       return res.status(400).json({
         message: "Please provide name, email, username and password",
+      });
+    }
+
+    // Validate email domain
+    const emailDomain = email.split("@")[1]?.toLowerCase();
+    if (!emailDomain || !ALLOWED_EMAIL_DOMAINS.includes(emailDomain)) {
+      return res.status(403).json({
+        message: `The domain '${emailDomain || "unknown"}' is not allowed for signup. Please use an authorized email domain.`,
       });
     }
 
