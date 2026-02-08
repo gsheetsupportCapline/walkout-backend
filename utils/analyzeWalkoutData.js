@@ -198,7 +198,7 @@ async function analyzeWalkoutData(officeData, lc3Data) {
 
     // Find if there's an allowable alternative for this service
     const allowable = allowableChangesData.find(
-      (doc) => doc.originalService === item.Service
+      (doc) => doc.originalService === item.Service,
     );
 
     if (allowable) {
@@ -233,7 +233,7 @@ async function analyzeWalkoutData(officeData, lc3Data) {
   const merged = fullMatch.concat(
     partialMatch,
     allowableChangesMatch,
-    finalNotFound
+    finalNotFound,
   );
   const overallMatch = merged.every((m) => m.match);
 

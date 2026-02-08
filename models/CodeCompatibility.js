@@ -19,7 +19,7 @@ const codeCompatibilitySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Index for faster lookups
@@ -27,7 +27,7 @@ codeCompatibilitySchema.index({ serviceCode: 1 });
 
 const CodeCompatibility = mongoose.model(
   "CodeCompatibility",
-  codeCompatibilitySchema
+  codeCompatibilitySchema,
 );
 
 module.exports = CodeCompatibility;

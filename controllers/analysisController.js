@@ -32,14 +32,16 @@ exports.analyzeWalkout = async (req, res) => {
     if (!officeData) {
       return res.status(400).json({
         success: false,
-        message: "Office walkout image data not found. Please upload and extract office walkout image first.",
+        message:
+          "Office walkout image data not found. Please upload and extract office walkout image first.",
       });
     }
 
     if (!lc3Data) {
       return res.status(400).json({
         success: false,
-        message: "LC3 walkout image data not found. Please upload and extract LC3 walkout image first.",
+        message:
+          "LC3 walkout image data not found. Please upload and extract LC3 walkout image first.",
       });
     }
 
@@ -53,13 +55,15 @@ exports.analyzeWalkout = async (req, res) => {
     // Save analysis result to walkout document
     walkout.analysisResult = JSON.stringify(analysisResult.data);
     walkout.lastAnalyzedAt = new Date().toISOString();
-    
+
     // Update audit section with analysis data
     if (!walkout.auditSection) {
       walkout.auditSection = {};
     }
-    walkout.auditSection.auditAnalysisData = JSON.stringify(analysisResult.data);
-    
+    walkout.auditSection.auditAnalysisData = JSON.stringify(
+      analysisResult.data,
+    );
+
     await walkout.save();
 
     res.status(200).json({
@@ -104,14 +108,16 @@ exports.regenerateAnalysis = async (req, res) => {
     if (!officeData) {
       return res.status(400).json({
         success: false,
-        message: "Office walkout image data not found. Please upload and extract office walkout image first.",
+        message:
+          "Office walkout image data not found. Please upload and extract office walkout image first.",
       });
     }
 
     if (!lc3Data) {
       return res.status(400).json({
         success: false,
-        message: "LC3 walkout image data not found. Please upload and extract LC3 walkout image first.",
+        message:
+          "LC3 walkout image data not found. Please upload and extract LC3 walkout image first.",
       });
     }
 
@@ -128,13 +134,15 @@ exports.regenerateAnalysis = async (req, res) => {
     // Save analysis result to walkout document
     walkout.analysisResult = JSON.stringify(analysisResult.data);
     walkout.lastAnalyzedAt = new Date().toISOString();
-    
+
     // Update audit section with analysis data
     if (!walkout.auditSection) {
       walkout.auditSection = {};
     }
-    walkout.auditSection.auditAnalysisData = JSON.stringify(analysisResult.data);
-    
+    walkout.auditSection.auditAnalysisData = JSON.stringify(
+      analysisResult.data,
+    );
+
     await walkout.save();
 
     console.log(`✅ Analysis regenerated successfully`);

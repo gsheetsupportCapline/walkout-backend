@@ -20,7 +20,7 @@ const allowableChangesSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Compound index for faster lookups
@@ -28,7 +28,7 @@ allowableChangesSchema.index({ originalService: 1, alternativeService: 1 });
 
 const AllowableChanges = mongoose.model(
   "AllowableChanges",
-  allowableChangesSchema
+  allowableChangesSchema,
 );
 
 module.exports = AllowableChanges;

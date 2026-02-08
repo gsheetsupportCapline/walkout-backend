@@ -170,21 +170,28 @@ router.post(
           if (analysisResult.success) {
             walkout.analysisResult = JSON.stringify(analysisResult.data);
             walkout.lastAnalyzedAt = new Date().toISOString();
-            
+
             // Update audit section with analysis data
             if (!walkout.auditSection) {
               walkout.auditSection = {};
             }
-            walkout.auditSection.auditAnalysisData = JSON.stringify(analysisResult.data);
-            
+            walkout.auditSection.auditAnalysisData = JSON.stringify(
+              analysisResult.data,
+            );
+
             await walkout.save();
             console.log("✅ Analysis completed and saved automatically");
           }
         } else {
-          console.log("ℹ️ Skipping auto-analysis - waiting for both office and LC3 data");
+          console.log(
+            "ℹ️ Skipping auto-analysis - waiting for both office and LC3 data",
+          );
         }
       } catch (analysisError) {
-        console.error("⚠️ Auto-analysis failed (non-critical):", analysisError.message);
+        console.error(
+          "⚠️ Auto-analysis failed (non-critical):",
+          analysisError.message,
+        );
         // Don't fail the extraction if analysis fails
       }
 

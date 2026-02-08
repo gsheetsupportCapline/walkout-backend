@@ -34,7 +34,9 @@ const initAnalysisDataSyncCron = () => {
   console.log(`✓ Schedule: Every 1 hour`);
   console.log(`✓ Cron Expression: ${cronExpression}`);
   console.log(`✓ Timezone: America/Chicago (CST)`);
-  console.log(`✓ Syncs: Code Compatibility & Allowable Changes from Google Sheets`);
+  console.log(
+    `✓ Syncs: Code Compatibility & Allowable Changes from Google Sheets`,
+  );
 };
 
 module.exports = { initAnalysisDataSyncCron };

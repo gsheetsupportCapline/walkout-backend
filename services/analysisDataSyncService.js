@@ -94,7 +94,7 @@ const syncCodeCompatibility = async () => {
           compatibleCodes: compatibleCodes,
           lastSyncedAt: syncTime,
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       );
 
       syncedCount++;

@@ -19,13 +19,13 @@ router.post(
   "/sync",
   protect,
   restrictTo("admin", "superAdmin"),
-  manualSyncAnalysisData
+  manualSyncAnalysisData,
 );
 router.get(
   "/sync-status",
   protect,
   restrictTo("admin", "superAdmin"),
-  getSyncStatus
+  getSyncStatus,
 );
 
 module.exports = router;
