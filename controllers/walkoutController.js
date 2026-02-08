@@ -20,6 +20,91 @@ const toBoolean = (value) => {
   return num === 1; // 1 = true, anything else (2, 0) = false
 };
 
+// Helper: parse JSON payloads safely
+const parseMaybeJson = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch (_err) {
+      return null;
+    }
+  }
+  return value;
+};
+
+// Helper: extract history from body (supports JSON string or flat history.* fields)
+const extractHistoryFromBody = (body) => {
+  if (!body) return null;
+  if (body.history !== undefined) {
+    return parseMaybeJson(body.history);
+  }
+
+  const history = {};
+  let found = false;
+
+  Object.keys(body).forEach((key) => {
+    if (key.startsWith("history.")) {
+      const field = key.slice("history.".length);
+      history[field] = body[key];
+      found = true;
+    } else if (key.startsWith("history[") && key.endsWith("]")) {
+      const field = key.slice("history[".length, -1);
+      history[field] = body[key];
+      found = true;
+    }
+  });
+
+  if (!found) return null;
+
+  if (history.changes) {
+    const parsedChanges = parseMaybeJson(history.changes);
+    if (parsedChanges) history.changes = parsedChanges;
+  }
+
+  return history;
+};
+
+// Helper: normalize old history objects into a single array
+const normalizeHistoryArray = (existingHistory) => {
+  if (Array.isArray(existingHistory)) return existingHistory;
+  if (existingHistory && typeof existingHistory === "object") {
+    const normalized = [];
+    ["office", "lc3", "audit", "iv"].forEach((sectionKey) => {
+      const entry = existingHistory[sectionKey];
+      if (!entry) return;
+      const list = Array.isArray(entry) ? entry : [entry];
+      list.forEach((item) => {
+        normalized.push({
+          ...item,
+          section: sectionKey,
+        });
+      });
+    });
+    return normalized;
+  }
+  return [];
+};
+
+const ensureHistoryArray = (walkout) => {
+  if (!Array.isArray(walkout.history)) {
+    walkout.history = normalizeHistoryArray(walkout.history);
+  }
+};
+
+// Helper: append history entries to a single array with section tag
+const appendHistory = (historyArray, sectionKey, entry, serverMeta) => {
+  if (!entry) return;
+  const list = Array.isArray(entry) ? entry : [entry];
+  list.forEach((item) => {
+    historyArray.push({
+      ...item,
+      section: sectionKey,
+      _server: serverMeta,
+    });
+  });
+};
+
 // ====================================
 // OFFICE SECTION OPERATIONS
 // ====================================
@@ -65,6 +150,7 @@ exports.submitOfficeSection = async (req, res) => {
       narrative,
       newOfficeNote,
       officeOpenTime,
+      history,
       walkoutStatus, // Root level - from frontend (can update status)
       isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
       pendingWith, // Root level - from frontend
@@ -677,6 +763,18 @@ exports.submitOfficeSection = async (req, res) => {
       pendingWith: pendingWith || undefined, // Root level - from frontend
     });
 
+    const parsedHistory = extractHistoryFromBody(req.body);
+    if (parsedHistory) {
+      if (!Array.isArray(walkout.history)) {
+        walkout.history = normalizeHistoryArray(walkout.history);
+      }
+      appendHistory(walkout.history, "office", parsedHistory, {
+        updatedAt: officeData.officeLastUpdatedAt,
+        updatedBy: req.user._id,
+      });
+      await walkout.save();
+    }
+
     // ====================================
     // UPDATE APPOINTMENT isWalkoutSubmittedToLC3
     // ====================================
@@ -838,6 +936,8 @@ exports.getWalkoutById = async (req, res) => {
       });
     }
 
+    ensureHistoryArray(walkout);
+
     res.status(200).json({
       success: true,
       data: walkout,
@@ -890,7 +990,7 @@ exports.updateOfficeSection = async (req, res) => {
       amountCollectedSecondaryMode: toNumber(
         req.body.amountCollectedSecondaryMode,
       ),
-      lastFourDigitsCheckForte: toNumber(req.body.lastFourDigitsCheckForte),
+      lastFourDigitsCheckForte: req.body.lastFourDigitsCheckForte,
 
       // Boolean fields - convert "true"/"false" strings to boolean
       signedGeneralConsent:
@@ -928,6 +1028,7 @@ exports.updateOfficeSection = async (req, res) => {
       isOnHoldAddressed: req.body.isOnHoldAddressed, // Root level
       pendingWith: req.body.pendingWith, // Root level
       officeOpenTime: req.body.officeOpenTime,
+      history: req.body.history,
     };
 
     const {
@@ -969,6 +1070,7 @@ exports.updateOfficeSection = async (req, res) => {
       isOnHoldAddressed, // Root level
       pendingWith, // Root level
       officeOpenTime,
+      history,
     } = convertedBody;
 
     const walkout = await Walkout.findById(id);
@@ -979,6 +1081,8 @@ exports.updateOfficeSection = async (req, res) => {
         message: "Walkout not found",
       });
     }
+
+    ensureHistoryArray(walkout);
 
     // DEBUG: Check what's in req.body and req.file
     console.log("=== UPDATE OFFICE SECTION DEBUG ===");
@@ -1038,6 +1142,17 @@ exports.updateOfficeSection = async (req, res) => {
         note: newOfficeNote.trim(),
         addedBy: req.user._id,
         addedAt: toCSTDateString(),
+      });
+    }
+
+    const parsedHistory = extractHistoryFromBody(req.body);
+    if (parsedHistory) {
+      if (!Array.isArray(walkout.history)) {
+        walkout.history = normalizeHistoryArray(walkout.history);
+      }
+      appendHistory(walkout.history, "office", parsedHistory, {
+        updatedAt: walkout.officeSection.officeLastUpdatedAt,
+        updatedBy: req.user._id,
       });
     }
 
@@ -1296,6 +1411,8 @@ exports.submitLc3Section = async (req, res) => {
       });
     }
 
+    ensureHistoryArray(walkout);
+
     // Validate that office section has been submitted
     if (!walkout.officeSection || !walkout.officeSection.officeSubmittedAt) {
       return res.status(400).json({
@@ -1319,7 +1436,7 @@ exports.submitLc3Section = async (req, res) => {
       productionDetails: productionDetailsRaw,
       providerNotes: providerNotesRaw,
       lc3Remarks,
-      onHoldNote,
+      lc3NotesData,
       walkoutStatus, // Root level - from frontend (can update status)
       isOnHoldAddressed, // Root level - from frontend ("yes" or "no")
       pendingWith, // Root level - from frontend
@@ -1327,6 +1444,7 @@ exports.submitLc3Section = async (req, res) => {
       lc3OpenTime,
       sessionStartDateTime, // NEW: Session tracking - start time from frontend
       sessionEndDateTime, // NEW: Session tracking - end time from frontend (when submitting)
+      history,
     } = req.body;
 
     // Parse JSON fields if they are strings
@@ -1374,7 +1492,7 @@ exports.submitLc3Section = async (req, res) => {
     console.log("  - productionDetails:", productionDetails ? "✓" : "✗");
     console.log("  - providerNotes:", providerNotes ? "✓" : "✗");
     console.log("  - lc3Remarks:", lc3Remarks ? "✓" : "✗");
-    console.log("  - onHoldNote:", onHoldNote ? "✓" : "✗");
+    console.log("  - lc3NotesData:", lc3NotesData ? "✓" : "✗");
 
     // Update Rule Engine if provided
     if (ruleEngine) {
@@ -1429,13 +1547,13 @@ exports.submitLc3Section = async (req, res) => {
       walkout.lc3Section.lc3Remarks = lc3Remarks;
     }
 
-    // Add on-hold note if provided
-    if (onHoldNote) {
-      if (!walkout.lc3Section.onHoldNotes) {
-        walkout.lc3Section.onHoldNotes = [];
+    // Add LC3 notes data if provided
+    if (lc3NotesData) {
+      if (!walkout.lc3Section.lc3NotesData) {
+        walkout.lc3Section.lc3NotesData = [];
       }
-      walkout.lc3Section.onHoldNotes.push({
-        note: onHoldNote,
+      walkout.lc3Section.lc3NotesData.push({
+        note: lc3NotesData,
         addedBy: userId,
         addedAt: toCSTDateString(),
       });
@@ -1444,6 +1562,7 @@ exports.submitLc3Section = async (req, res) => {
     // ====================================
     // SESSION TRACKING (Time tracking for LC3 work)
     // ====================================
+    let sessionDetails = null;
     if (sessionStartDateTime && sessionEndDateTime) {
       // Initialize sessions if doesn't exist
       if (!walkout.lc3Section.sessions) {
@@ -1473,6 +1592,12 @@ exports.submitLc3Section = async (req, res) => {
       // Update total duration
       walkout.lc3Section.sessions.total =
         (walkout.lc3Section.sessions.total || 0) + durationSeconds;
+
+      // Store session details for history enhancement
+      sessionDetails = {
+        session: newSession,
+        totalDurationSeconds: walkout.lc3Section.sessions.total,
+      };
 
       console.log(
         `⏱️ Session tracked: ${durationSeconds}s (Total: ${walkout.lc3Section.sessions.total}s)`,
@@ -1560,6 +1685,24 @@ exports.submitLc3Section = async (req, res) => {
         walkout.lc3Section.lc3CompletedAt = currentTime;
         walkout.lc3Section.lc3CompletedBy = userId;
       }
+    }
+
+    const parsedHistory = extractHistoryFromBody(req.body);
+    if (parsedHistory) {
+      if (!Array.isArray(walkout.history)) {
+        walkout.history = normalizeHistoryArray(walkout.history);
+      }
+
+      // Enhance history with backend session details if available
+      const historyEntry = { ...parsedHistory };
+      if (sessionDetails && historyEntry.changes) {
+        historyEntry.changes.sessionBackendDetails = sessionDetails;
+      }
+
+      appendHistory(walkout.history, "lc3", historyEntry, {
+        updatedAt: walkout.lc3Section.lc3LastUpdatedAt,
+        updatedBy: userId,
+      });
     }
 
     // Update root level fields if provided
@@ -1674,6 +1817,8 @@ exports.submitAuditSection = async (req, res) => {
       });
     }
 
+    ensureHistoryArray(walkout);
+
     // Validate that LC3 section has been submitted
     if (!walkout.lc3Section || !walkout.lc3Section.lc3SubmittedAt) {
       return res.status(400).json({
@@ -1695,6 +1840,7 @@ exports.submitAuditSection = async (req, res) => {
       auditDiscrepancyFixedByLC3,
       auditLc3Remarks,
       auditOpenTime,
+      history,
     } = req.body;
 
     // Parse auditAnalysisData if it's a string (from FormData)
@@ -1768,6 +1914,17 @@ exports.submitAuditSection = async (req, res) => {
     walkout.auditSection.auditLastUpdatedBy = userId;
     walkout.lastUpdateOn = currentTime;
 
+    const parsedHistory = extractHistoryFromBody(req.body);
+    if (parsedHistory) {
+      if (!Array.isArray(walkout.history)) {
+        walkout.history = normalizeHistoryArray(walkout.history);
+      }
+      appendHistory(walkout.history, "audit", parsedHistory, {
+        updatedAt: walkout.auditSection.auditLastUpdatedAt,
+        updatedBy: userId,
+      });
+    }
+
     // Save the walkout
     await walkout.save();
 
@@ -1827,6 +1984,7 @@ exports.submitIvSection = async (req, res) => {
       walkoutStatus, // Root level - from frontend
       pendingWith, // Root level - from frontend
       isOnHoldAddressed, // Root level - from frontend
+      history,
     } = req.body;
 
     console.log("📝 IV Section Data Received:");
@@ -1851,6 +2009,17 @@ exports.submitIvSection = async (req, res) => {
     walkout.ivSection.ivLastUpdatedAt = currentTime;
     walkout.ivSection.ivLastUpdatedBy = userId;
     walkout.lastUpdateOn = currentTime;
+
+    const parsedHistory = extractHistoryFromBody(req.body);
+    if (parsedHistory) {
+      if (!Array.isArray(walkout.history)) {
+        walkout.history = normalizeHistoryArray(walkout.history);
+      }
+      appendHistory(walkout.history, "iv", parsedHistory, {
+        updatedAt: walkout.ivSection.ivLastUpdatedAt,
+        updatedBy: userId,
+      });
+    }
 
     // Update root level fields if provided
     if (walkoutStatus !== undefined) {

@@ -236,7 +236,8 @@ const officeSectionSchema = new mongoose.Schema(
       // Conditionally required based on patientPortionSecondaryMode
     },
     lastFourDigitsCheckForte: {
-      type: Number,
+      type: String,
+      trim: true,
       // Conditionally required if mode = 4
     },
 
@@ -665,11 +666,8 @@ const lc3SectionSchema = new mongoose.Schema(
       trim: true, // Text area - Long text field for any additional remarks
     },
 
-    // Historical Notes Array
-    lc3HistoricalNotes: [String], // Array of historical notes
-
-    // On-Hold Notes Array (with user tracking)
-    onHoldNotes: [lc3HistoricalNoteSchema],
+    // LC3 Notes Data Array (with user tracking)
+    lc3NotesData: [lc3HistoricalNoteSchema],
 
     // Session Tracking (Time tracking for LC3 work)
     sessions: {
@@ -878,6 +876,13 @@ const walkoutSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // History tracking (frontend-managed payloads)
+    // Single array; each entry includes a section key
+    history: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
+
     // Soft delete flag
     isActive: {
       type: Boolean,
@@ -888,6 +893,29 @@ const walkoutSchema = new mongoose.Schema(
     collection: "walkouts",
   },
 );
+
+// Normalize legacy history objects into an array before saving
+walkoutSchema.pre("validate", function (next) {
+  if (Array.isArray(this.history)) return next();
+  if (this.history && typeof this.history === "object") {
+    const normalized = [];
+    ["office", "lc3", "audit", "iv"].forEach((sectionKey) => {
+      const entry = this.history[sectionKey];
+      if (!entry) return;
+      const list = Array.isArray(entry) ? entry : [entry];
+      list.forEach((item) => {
+        normalized.push({
+          ...item,
+          section: sectionKey,
+        });
+      });
+    });
+    this.history = normalized;
+  } else if (this.history === null || this.history === undefined) {
+    this.history = [];
+  }
+  next();
+});
 
 applyStringTimestamps(walkoutSchema);
 
