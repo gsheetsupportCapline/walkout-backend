@@ -6,6 +6,7 @@ const {
   extractLc3WalkoutData,
 } = require("../controllers/lc3WalkoutImageAiController");
 const { toCSTDateString, parseCSTDateString } = require("../utils/timezone");
+const { analyzeWalkoutData } = require("../utils/analyzeWalkoutData");
 
 /**
  * @desc    Re-extract data from LC3 walkout image using AI
@@ -152,6 +153,39 @@ router.post(
       console.log(
         `📊 Updated counts - Total: ${regenDetails.totalRegenerateCount}, Hourly: ${regenDetails.hourlyRegenerateCount}`,
       );
+
+      // ====================================
+      // AUTO-TRIGGER ANALYSIS
+      // ====================================
+      try {
+        // Check if both office and LC3 data exist
+        const officeData = walkout.officeWalkoutSnip?.extractedData;
+        const lc3Data = walkout.lc3WalkoutImage?.extractedData;
+
+        if (officeData && lc3Data) {
+          console.log("🔄 Auto-triggering analysis after LC3 extraction...");
+          const analysisResult = await analyzeWalkoutData(officeData, lc3Data);
+
+          if (analysisResult.success) {
+            walkout.analysisResult = JSON.stringify(analysisResult.data);
+            walkout.lastAnalyzedAt = new Date().toISOString();
+            
+            // Update audit section with analysis data
+            if (!walkout.auditSection) {
+              walkout.auditSection = {};
+            }
+            walkout.auditSection.auditAnalysisData = JSON.stringify(analysisResult.data);
+            
+            await walkout.save();
+            console.log("✅ Analysis completed and saved automatically");
+          }
+        } else {
+          console.log("ℹ️ Skipping auto-analysis - waiting for both office and LC3 data");
+        }
+      } catch (analysisError) {
+        console.error("⚠️ Auto-analysis failed (non-critical):", analysisError.message);
+        // Don't fail the extraction if analysis fails
+      }
 
       res.status(200).json({
         success: true,

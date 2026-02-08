@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const connectDB = require("./config/database");
 const { initAppointmentCron } = require("./cron/appointmentCron");
 const { initProviderScheduleCron } = require("./cron/providerScheduleCron");
+const { initAnalysisDataSyncCron } = require("./cron/analysisDataSyncCron");
 
 dotenv.config();
 
@@ -64,6 +65,7 @@ app.use(
 );
 app.use("/api/lc3-walkout-ai", require("./routes/lc3WalkoutImageAiRoutes"));
 app.use("/api/extraction-logs", require("./routes/imageExtractionLogRoutes"));
+app.use("/api/analysis", require("./routes/analysisRoutes"));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -80,4 +82,7 @@ app.listen(PORT, () => {
 
   // Initialize provider schedule sync cron job
   initProviderScheduleCron();
+
+  // Initialize analysis data sync cron job
+  initAnalysisDataSyncCron();
 });

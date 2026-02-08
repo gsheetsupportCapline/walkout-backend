@@ -856,6 +856,15 @@ const walkoutSchema = new mongoose.Schema(
       default: {},
     },
 
+    // Analysis Result (comparing Office and LC3 extracted data)
+    analysisResult: {
+      type: String, // JSON stringified analysis data
+      trim: true,
+    },
+    lastAnalyzedAt: {
+      type: String, // ISO timestamp of last analysis
+    },
+
     // Overall walkout status (updated from frontend when office or LC3 section updates)
     walkoutStatus: {
       type: String,
