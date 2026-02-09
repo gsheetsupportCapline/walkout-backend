@@ -9,6 +9,16 @@ const codeCompatibilitySchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
+    tooth: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    surface: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     compatibleCodes: {
       type: [String],
       default: [],

@@ -100,13 +100,20 @@ async function analyzeWalkoutData(officeData, lc3Data) {
   // ========================================
   const compatibilityData = await CodeCompatibility.find({});
   const compatibilityMap = {};
+  const compatibilityFilters = {};
+
   compatibilityData.forEach((doc) => {
     compatibilityMap[doc.serviceCode] = doc.compatibleCodes;
+    // Store tooth/surface filters for each service
+    compatibilityFilters[doc.serviceCode] = {
+      tooth: doc.tooth || "",
+      surface: doc.surface || "",
+    };
   });
 
   // ========================================
   // PASS 2️⃣: PARTIAL MATCH
-  // Service code matches, tooth/surface may differ
+  // Service code matches (including compatible codes), tooth/surface may differ
   // Uses scoring system to find best matches
   // ========================================
   const grouped = {};
@@ -117,23 +124,79 @@ async function analyzeWalkoutData(officeData, lc3Data) {
 
   for (let svc in grouped) {
     let text1Items = grouped[svc];
+
+    // Build list of acceptable service codes (original + compatible)
+    const acceptableServices = [svc];
+    if (compatibilityMap[svc]) {
+      acceptableServices.push(...compatibilityMap[svc]);
+    }
+
+    // Find all LC3 items with acceptable service codes
     let candidateIndices = remaining2
       .map((it, i) => {
         const serviceCode = it.Description?.service_code || "";
-        return serviceCode === svc ? i : -1;
+        return acceptableServices.includes(serviceCode) ? i : -1;
       })
       .filter((i) => i !== -1);
 
     while (candidateIndices.length && text1Items.length) {
       const pairs = [];
+
       candidateIndices.forEach((ci) => {
         const cand = remaining2[ci];
+        const candServiceCode = cand.Description?.service_code || "";
         const keyCand = getKey(cand);
+
         text1Items.forEach((item1) => {
           const key1 = getKey(item1);
+          let score = 0;
+          let isCompatible = false;
+          let passesFilter = true;
+
+          // Check if it's a direct service match or compatible match
+          if (candServiceCode === svc) {
+            // Direct match
+            score = 1;
+            isCompatible = false;
+          } else if (
+            compatibilityMap[svc] &&
+            compatibilityMap[svc].includes(candServiceCode)
+          ) {
+            // Compatible service match
+            score = 1;
+            isCompatible = true;
+
+            // Check tooth/surface filter from compatibility sheet
+            const filter = compatibilityFilters[svc];
+            if (filter) {
+              // If filter has tooth specified, office item must match that tooth
+              if (filter.tooth && item1.Tooth !== filter.tooth) {
+                passesFilter = false;
+              }
+              // If filter has surface specified, office item must match that surface
+              if (filter.surface && item1.Surface !== filter.surface) {
+                passesFilter = false;
+              }
+            }
+          }
+
+          // Add bonus point if tooth+surface composite key matches
           const compOK = keyCand === key1;
-          // Score: 1 for service match + 1 if composite key also matches
-          pairs.push({ score: 1 + (compOK ? 1 : 0), item1, ci, compOK });
+          if (compOK) {
+            score += 1;
+          }
+
+          // Only add to pairs if passes filter
+          if (passesFilter && score > 0) {
+            pairs.push({
+              score,
+              item1,
+              ci,
+              compOK,
+              isCompatible,
+              candServiceCode,
+            });
+          }
         });
       });
 
@@ -151,6 +214,10 @@ async function analyzeWalkoutData(officeData, lc3Data) {
         serviceMatch: true,
         toothSurfaceMatch: best.compOK,
         match: isLenient ? true : best.compOK,
+        ...(best.isCompatible && {
+          matchedWith: best.candServiceCode,
+          matchType: "compatible",
+        }),
       });
 
       best.item1._matched = true;
@@ -158,11 +225,11 @@ async function analyzeWalkoutData(officeData, lc3Data) {
       remaining2 = remaining2.filter((c) => c !== used);
       text1Items = text1Items.filter((i) => i !== best.item1);
 
-      // Recalculate candidate indices
+      // Recalculate candidate indices with acceptable services
       candidateIndices = remaining2
         .map((it, i) => {
           const serviceCode = it.Description?.service_code || "";
-          return serviceCode === svc ? i : -1;
+          return acceptableServices.includes(serviceCode) ? i : -1;
         })
         .filter((i) => i !== -1);
     }

@@ -69,12 +69,46 @@ const syncCodeCompatibility = async () => {
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       const serviceCode = row[1]; // Column B
+      const toothSurface = row[2] || ""; // Column C - Tooth/Surface filter
       const compatibleCodesStr = row[3]; // Column D
 
       // Skip if service code is empty
       if (!serviceCode) {
         skippedCount++;
         continue;
+      }
+
+      // Parse tooth and surface from Column C
+      // Format can be: "12", "MOD", "12-MOD", "12/MOD", etc.
+      let tooth = "";
+      let surface = "";
+
+      if (toothSurface) {
+        const cleaned = toothSurface.toString().trim();
+
+        // Check if it contains separator (-, /, or space)
+        if (
+          cleaned.includes("-") ||
+          cleaned.includes("/") ||
+          cleaned.includes(" ")
+        ) {
+          const parts = cleaned.split(/[-\/\s]+/);
+          tooth = parts[0] || "";
+          surface = parts[1] || "";
+        } else {
+          // Check if it's a tooth number (digits or single letter)
+          if (/^[0-9]+$/.test(cleaned) || /^[A-T]$/.test(cleaned)) {
+            tooth = cleaned;
+          }
+          // Check if it's a surface (typical surface codes)
+          else if (/^[OMIFDLB]+$/.test(cleaned.toUpperCase())) {
+            surface = cleaned.toUpperCase();
+          }
+          // Otherwise, treat as tooth
+          else {
+            tooth = cleaned;
+          }
+        }
       }
 
       // Parse compatible codes (comma-separated string)
@@ -91,6 +125,8 @@ const syncCodeCompatibility = async () => {
         { serviceCode: serviceCode.toUpperCase() },
         {
           serviceCode: serviceCode.toUpperCase(),
+          tooth: tooth,
+          surface: surface,
           compatibleCodes: compatibleCodes,
           lastSyncedAt: syncTime,
         },
